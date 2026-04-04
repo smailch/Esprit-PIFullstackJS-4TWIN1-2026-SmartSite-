@@ -1,7 +1,4 @@
 import type {
-  Job,
-  CreateJobPayload,
-  UpdateJobPayload,
   Resource,
   CreateResourcePayload,
   UpdateResourcePayload,
@@ -65,14 +62,6 @@ async function apiFetch<T>(
         SWR Keys
 ====================== */
 
-export function getJobsKey() {
-  return `/jobs`;
-}
-
-export function getJobKey(id: string) {
-  return `/jobs/${id}`;
-}
-
 export function getTasksKey() {
   return `/tasks`;
 }
@@ -99,29 +88,6 @@ export function getTasksByProjectKey(projectId: string) {
 
 export function fetcher<T = unknown>(endpoint: string) {
   return apiFetch<T>(endpoint);
-}
-
-export function createJob(payload: CreateJobPayload): Promise<Job> {
-  return apiFetch<Job>(`/jobs`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
-
-export function updateJob(
-  id: string,
-  payload: UpdateJobPayload
-): Promise<Job> {
-  return apiFetch<Job>(`/jobs/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(payload),
-  });
-}
-
-export function deleteJob(id: string): Promise<void> {
-  return apiFetch<void>(`/jobs/${id}`, {
-    method: "DELETE",
-  });
 }
 
 export type TaskCreatePayload = Omit<BackendTask, "_id" | "createdAt">;
@@ -261,68 +227,6 @@ export function projectAssistantChat(
       body: JSON.stringify({ messages }),
     }
   );
-}
-/* ======================
-        EQUIPMENT CRUD
-====================== */
-
-export function getEquipmentsKey() {
-  return `/equipment`;
-}
-
-export function getEquipmentKey(id: string) {
-  return `/equipment/${id}`;
-}
-
-export function createEquipment(payload: any) {
-  return apiFetch(`/equipment`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
-
-export function updateEquipment(id: string, payload: any) {
-  return apiFetch(`/equipment/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
-}
-
-export function deleteEquipment(id: string) {
-  return apiFetch(`/equipment/${id}`, {
-    method: "DELETE",
-  });
-}
-/* ======================
-        HUMAN CRUD
-====================== */
-
-export function getHumansKey() {
-  return `/humans`;
-}
-
-export function getHumanKey(id: string) {
-  return `/humans/${id}`;
-}
-
-export function createHuman(payload: any) {
-  return apiFetch(`/humans`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
-
-export function updateHuman(id: string, payload: any) {
-  return apiFetch(`/humans/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
-}
-
-export function deleteHuman(id: string) {
-  return apiFetch(`/humans/${id}`, {
-    method: "DELETE",
-  });
 }
 
 

@@ -1,27 +1,4 @@
-// ---------- MongoDB-backed types (matching NestJS schema) ----------
-
-export interface AssignedResource {
-  resourceId: string;
-  type: "Human" | "Equipment";
-}
-
-export interface Job {
-  _id: string;
-  taskId: string;
-  title: string;
-  description: string;
-  startTime: string;
-  endTime: string;
-  status: "Planifié" | "En cours" | "Terminé";
-  assignedResources: AssignedResource[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-export type CreateJobPayload = Omit<Job, "_id" | "createdAt" | "updatedAt">;
-export type UpdateJobPayload = Partial<CreateJobPayload>;
-
-// ---------- Auxiliary types (kept for resources/tasks pages) ----------
+// ---------- Types partagés frontend / NestJS ----------
 
 
 export interface Resource {
@@ -149,52 +126,12 @@ export interface ProjectAssistantInitialReportResponse {
   report: string;
 }
 
-// ---------- API error type ----------
 
 
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// ---------- MongoDB-backed types (matching NestJS schema) ----------
-
-export interface AssignedResource {
-  resourceId: string;
-  type: "Human" | "Equipment";
-  name:string;
-  role:string;
-}
-
-export interface Job {
-  _id: string;
-  taskId: string;
-  title: string;
-  description: string;
-  startTime: string;
-  endTime: string;
-  status: "Planifié" | "En cours" | "Terminé";
-  assignedResources: AssignedResource[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-
-// ---------- Auxiliary types (kept for resources/tasks pages) ----------
 export interface Equipment {
   _id?: string;
   name: string;
@@ -202,35 +139,20 @@ export interface Equipment {
   serialNumber: string;
   model: string;
   brand: string;
-  purchaseDate: string;        // ISO date string
-  lastMaintenanceDate: string; // ISO date string
+  purchaseDate: string;
+  lastMaintenanceDate: string;
   location: string;
   availability: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
 
-export interface Resource {
-  _id: string;
-  type: "Human" | "Equipment";
-  name: string;
-  role: string;
-  availability: boolean;
-  createdAt: string;
-}
-
-export interface CreateResourcePayload {
-  type: "Human" | "Equipment";
-  name: string;
-  role: string;
-  availability: boolean;
-}
 export interface Human {
   _id: string;
   firstName: string;
   lastName: string;
   cin: string;
-  birthDate: string; // ISO date string
+  birthDate: string;
   phone: string;
   role: string;
   cvUrl?: string;
@@ -239,12 +161,7 @@ export interface Human {
   createdAt?: string;
   updatedAt?: string;
 }
-export interface UpdateResourcePayload {
-  type?: "Human" | "Equipment";
-  name?: string;
-  role?: string;
-  availability?: boolean;
-}
+
 export interface Task {
   _id: number;
   title: string;

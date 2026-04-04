@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import MainLayout from '@/components/MainLayout';
 import PageHeader from '@/components/PageHeader';
 import TaskForm, { type TaskFormValues } from '@/components/TaskForm';
@@ -10,8 +10,6 @@ import {
   Users,
   Plus,
   Filter,
-  ChevronDown,
-  CheckCircle2,
   Briefcase,
   Pencil,
   Trash2,
@@ -28,9 +26,7 @@ import {
   createTask,
   deleteTask,
   fetcher,
-  getJobsKey,
   getProjects,
-  getResourcesKey,
   getTasksKey,
   getUsersKey,
   updateTask,
@@ -40,9 +36,7 @@ import { formatDh } from '@/lib/formatMoney';
 import type {
   BackendTask,
   BackendUser,
-  Job,
   Project,
-  Resource,
   TaskPriority,
   TaskStatus,
 } from '@/lib/types';
@@ -63,17 +57,8 @@ interface UiTask {
   spentBudget: number;
   status: TaskStatus;
   priority: TaskPriority;
-  jobCount: number;
   /** Indicateur calculé (date de fin dépassée, statut ≠ Done). */
   isLate: boolean;
-}
-
-interface UiJob {
-  id: string;
-  taskId: string;
-  name: string;
-  status: 'Completed' | 'In Progress' | 'Planning';
-  assignedTo: string;
 }
 
 const defaultFormValues = (projectId: string): TaskFormValues => ({
@@ -168,7 +153,6 @@ function TasksPageContent() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('All');
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('All');
   const [progressSort, setProgressSort] = useState<ProgressSort>('none');
-  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [mode, setMode] = useState<'create' | 'edit'>('create');
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -185,8 +169,6 @@ function TasksPageContent() {
     isLoading: isTasksLoading,
     error: tasksError,
   } = useSWR<BackendTask[]>(getTasksKey(), fetcher);
-  const { data: jobs = [], isLoading: isJobsLoading, error: jobsError } = useSWR<Job[]>(getJobsKey(), fetcher);
-  const { data: resources = [], isLoading: isResourcesLoading } = useSWR<Resource[]>(getResourcesKey(), fetcher);
   const { data: projects = [], isLoading: isProjectsLoading } = useSWR<Project[]>('/projects', getProjects);
   const { data: users = [], isLoading: isUsersLoading } = useSWR<BackendUser[]>(getUsersKey(), fetcher);
 
@@ -199,7 +181,6 @@ function TasksPageContent() {
     [projects],
   );
   const usersById = useMemo(() => new Map(users.map((u) => [u._id, u])), [users]);
-  const resourcesById = useMemo(() => new Map(resources.map((r) => [r._id, r])), [resources]);
   const lateCheckNow = useMemo(() => new Date(), []);
 
   const scopedProjectId = useMemo(
@@ -225,24 +206,20 @@ function TasksPageContent() {
 
   const uiTasks: UiTask[] = useMemo(
     () =>
-      tasks.map((task) => {
-        const taskJobs = jobs.filter((job) => job.taskId === task._id);
-        return {
-          id: task._id,
-          projectId: task.projectId,
-          title: task.title,
-          project: projectsById.get(task.projectId)?.name ?? '—',
-          assignedToLabel: assignedToLabel(task, usersById),
-          dependencyCount: Array.isArray(task.dependsOn) ? task.dependsOn.length : 0,
-          progress: Math.min(100, Math.max(0, task.progress ?? 0)),
-          spentBudget: task.spentBudget ?? 0,
-          status: task.status,
-          priority: task.priority,
-          jobCount: taskJobs.length,
-          isLate: isTaskLate(task, lateCheckNow),
-        };
-      }),
-    [tasks, jobs, projectsById, usersById, lateCheckNow],
+      tasks.map((task) => ({
+        id: task._id,
+        projectId: task.projectId,
+        title: task.title,
+        project: projectsById.get(task.projectId)?.name ?? '—',
+        assignedToLabel: assignedToLabel(task, usersById),
+        dependencyCount: Array.isArray(task.dependsOn) ? task.dependsOn.length : 0,
+        progress: Math.min(100, Math.max(0, task.progress ?? 0)),
+        spentBudget: task.spentBudget ?? 0,
+        status: task.status,
+        priority: task.priority,
+        isLate: isTaskLate(task, lateCheckNow),
+      })),
+    [tasks, projectsById, usersById, lateCheckNow],
   );
 
   const uiTasksForScope = useMemo(() => {
@@ -380,52 +357,9 @@ function TasksPageContent() {
     }
   };
 
-  const getJobStatusColor = (status: UiJob['status']) => {
-    switch (status) {
-      case 'Completed':
-        return 'bg-green-50 border-green-200';
-      case 'In Progress':
-        return 'bg-blue-50 border-blue-200';
-      case 'Planning':
-        return 'bg-yellow-50 border-yellow-200';
-      default:
-        return 'bg-gray-50 border-gray-200';
-    }
-  };
-
-  const toggleTaskExpansion = (taskId: string) => {
-    setExpandedTaskId(expandedTaskId === taskId ? null : taskId);
-  };
-
-  const mapJobStatus = (status: Job['status']): UiJob['status'] => {
-    switch (status) {
-      case 'Terminé':
-        return 'Completed';
-      case 'En cours':
-        return 'In Progress';
-      default:
-        return 'Planning';
-    }
-  };
-
-  const getTaskJobs = (taskId: string): UiJob[] => {
-    return jobs
-      .filter((job) => job.taskId === taskId)
-      .map((job) => ({
-        id: job._id,
-        taskId: job.taskId,
-        name: job.title,
-        status: mapJobStatus(job.status),
-        assignedTo:
-          job.assignedResources
-            .map((ar) => resourcesById.get(ar.resourceId)?.name)
-            .find(Boolean) ?? 'Unassigned',
-      }));
-  };
-
   const isLoading =
-    isTasksLoading || isJobsLoading || isProjectsLoading || isResourcesLoading || isUsersLoading;
-  const hasError = tasksError || jobsError;
+    isTasksLoading || isProjectsLoading || isUsersLoading;
+  const hasError = tasksError;
 
   const resetForm = () => {
     setFormInitialValues(defaultFormValues(projects[0]?._id ?? ''));
@@ -525,9 +459,6 @@ function TasksPageContent() {
       await deleteTask(taskId);
       await mutate(getTasksKey());
       await mutate('/projects');
-      if (expandedTaskId === taskId) {
-        setExpandedTaskId(null);
-      }
     } catch (error) {
       console.error('Failed to delete task:', error);
       toast({ title: 'Error', description: 'Could not delete the task.' });
@@ -716,7 +647,6 @@ function TasksPageContent() {
           <table className="w-full min-w-0 table-auto border-collapse text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/40">
-                <th className="w-8 px-1 py-3 sm:px-2" aria-hidden />
                 <th className="px-2 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground first:pl-3 sm:px-3 whitespace-normal break-words">
                   Task
                 </th>
@@ -741,35 +671,14 @@ function TasksPageContent() {
                 <th className="px-2 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:px-3 whitespace-normal break-words">
                   Priority
                 </th>
-                <th className="px-2 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:px-3 whitespace-normal break-words">
-                  Jobs
-                </th>
                 <th className="px-2 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground last:pr-3 sm:px-3 whitespace-normal break-words">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody>
-              {filteredTasks.map((task) => {
-                const taskJobs = getTaskJobs(task.id);
-                const isExpanded = expandedTaskId === task.id;
-
-                return (
-                  <React.Fragment key={task.id}>
-                    <tr className="border-b border-border/60 transition-colors odd:bg-background even:bg-muted/[0.35] hover:bg-primary/[0.04]">
-                      <td className="px-1 py-3 text-center align-top sm:px-2">
-                        <button
-                          type="button"
-                          onClick={() => toggleTaskExpansion(task.id)}
-                          className="inline-flex size-8 items-center justify-center rounded-lg text-primary hover:bg-primary/10 transition-colors"
-                          aria-label="Show jobs for this task"
-                        >
-                          <ChevronDown
-                            size={16}
-                            className={`text-primary transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                          />
-                        </button>
-                      </td>
+              {filteredTasks.map((task) => (
+                    <tr key={task.id} className="border-b border-border/60 transition-colors odd:bg-background even:bg-muted/[0.35] hover:bg-primary/[0.04]">
                       <td className="px-2 py-3 align-top break-words first:pl-3 sm:px-3">
                         <div className="flex items-start gap-2.5 min-w-0">
                           <Clipboard size={17} className="mt-0.5 shrink-0 text-primary" aria-hidden />
@@ -830,11 +739,6 @@ function TasksPageContent() {
                       <td className="px-2 py-3 align-top sm:px-3">
                         <span className={getPriorityStyle(task.priority)}>{priorityCellLabel(task.priority)}</span>
                       </td>
-                      <td className="px-2 py-3 text-center align-top sm:px-3">
-                        <span className="inline-block rounded-full bg-accent px-2.5 py-1 text-xs font-semibold text-accent-foreground shadow-sm tabular-nums">
-                          {task.jobCount}
-                        </span>
-                      </td>
                       <td className="px-2 py-3 align-top break-words last:pr-3 sm:px-3">
                         <div className="flex flex-wrap items-center justify-center gap-1.5">
                           <button
@@ -859,99 +763,7 @@ function TasksPageContent() {
                         </div>
                       </td>
                     </tr>
-
-                    {isExpanded && (
-                      <tr className="border-b border-border/60 bg-muted/25">
-                        <td colSpan={11} className="px-5 py-5 sm:px-6 sm:py-6">
-                          <div className="max-w-4xl">
-                            <div className="mb-4 flex flex-wrap items-center gap-3 border-b border-border/60 pb-4">
-                              <div className="flex min-w-0 flex-1 items-center gap-2">
-                                <Clipboard size={18} className="shrink-0 text-primary" aria-hidden />
-                                <h4 className="truncate text-base font-semibold text-foreground">
-                                  Jobs — {task.title}
-                                </h4>
-                                <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground tabular-nums">
-                                  {taskJobs.length} {taskJobs.length === 1 ? 'job' : 'jobs'}
-                                </span>
-                              </div>
-                              <div className="flex shrink-0 items-center gap-1.5 sm:ml-auto">
-                                <button
-                                  type="button"
-                                  onClick={() => openEditModal(task.id)}
-                                  className="inline-flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-[filter] hover:brightness-110"
-                                  aria-label="Edit task"
-                                  title="Edit task"
-                                >
-                                  <Pencil size={15} aria-hidden />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteTask(task.id)}
-                                  disabled={deleteTargetId === task.id}
-                                  className="inline-flex size-9 items-center justify-center rounded-lg border border-destructive/35 bg-background text-destructive shadow-sm transition-colors hover:bg-destructive/10 disabled:pointer-events-none disabled:opacity-50"
-                                  aria-label="Delete task"
-                                  title="Delete task"
-                                >
-                                  <Trash2 size={15} aria-hidden />
-                                </button>
-                              </div>
-                            </div>
-
-                            {taskJobs.length > 0 ? (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                {taskJobs.map((job) => (
-                                  <div
-                                    key={job.id}
-                                    className={`flex items-start gap-3 p-4 rounded-lg border ${getJobStatusColor(job.status)}`}
-                                  >
-                                    <CheckCircle2
-                                      size={18}
-                                      className={`flex-shrink-0 mt-0.5 ${
-                                        job.status === 'Completed'
-                                          ? 'text-green-600'
-                                          : job.status === 'In Progress'
-                                            ? 'text-blue-600'
-                                            : 'text-yellow-600'
-                                      }`}
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium text-foreground">{job.name}</p>
-                                      <p className="text-xs font-mono text-muted-foreground mt-1">ID: {job.id}</p>
-                                      <div className="flex flex-col gap-2 mt-2 text-xs text-muted-foreground">
-                                        <div className="flex items-center gap-2">
-                                          <Users size={12} className="flex-shrink-0" />
-                                          <span>{job.assignedTo}</span>
-                                        </div>
-                                        <div>
-                                          <span
-                                            className={`px-2 py-0.5 rounded-full font-medium inline-block ${
-                                              job.status === 'Completed'
-                                                ? 'bg-green-100 text-green-800'
-                                                : job.status === 'In Progress'
-                                                  ? 'bg-blue-100 text-blue-800'
-                                                  : 'bg-yellow-100 text-yellow-800'
-                                            }`}
-                                          >
-                                            {job.status}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="text-center py-6 text-muted-foreground">
-                                <p className="text-sm">No jobs assigned to this task yet</p>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                );
-              })}
+              ))}
             </tbody>
           </table>
         </div>
