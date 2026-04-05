@@ -10,6 +10,10 @@ import { UsersModule } from './users/users.module';
 import { HumanResourcesModule } from './human-resources/human-resources.module';
 import { EquipmentResourcesModule } from './equipment-resources/equipment-resources.module';
 import { AnalysisAiModule } from './analysis-ai/analysis-ai.module';
+import { FinanceModule } from './modules/finance/finance.module';
+import { ReportsModule } from './modules/finance/reports/reports.module';
+import { PaymentsModule } from './modules/finance/payments/payments.module';
+import { InvoicesModule } from './modules/finance/invoices/invoices.module';
 
 @Module({
   imports: [
@@ -30,8 +34,13 @@ import { AnalysisAiModule } from './analysis-ai/analysis-ai.module';
     HumanResourcesModule,
     EquipmentResourcesModule,
     AnalysisAiModule,
+    InvoicesModule,
+    PaymentsModule,
+    ReportsModule,
+    FinanceModule
   ],
   controllers: [],
   providers: [],
 })
 export class AppModule {}
+
