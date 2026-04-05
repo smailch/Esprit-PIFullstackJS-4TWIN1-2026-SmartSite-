@@ -1,10 +1,24 @@
 // ---------- MongoDB-backed types (matching NestJS schema) ----------
 
+/** Id seul (API normale) ou document peuplé / forme legacy. */
+export type AssignedResourceIdRef =
+  | string
+  | {
+      _id?: string;
+      name?: string;
+      firstName?: string;
+      lastName?: string;
+      role?: string;
+    }
+  | null
+  | undefined;
+
 export interface AssignedResource {
-  resourceId: string;
+  resourceId: AssignedResourceIdRef;
   type: "Human" | "Equipment";
-  name:string;
-  role:string;
+  _id?: string;
+  /** Dénormalisé par le backend lors de la création / mise à jour du job */
+  name?: string;
 }
 
 export interface Job {
@@ -18,26 +32,14 @@ export interface Job {
   assignedResources: AssignedResource[];
   createdAt: string;
   updatedAt: string;
+  /** Liste jobs : pourcentage de suivi renvoyé par l’API */
+  progressPercentage?: number;
 }
 
 export type CreateJobPayload = Omit<Job, "_id" | "createdAt" | "updatedAt">;
 export type UpdateJobPayload = Partial<CreateJobPayload>;
-
 // ---------- Auxiliary types (kept for resources/tasks pages) ----------
-export interface Equipment {
-  _id?: string;
-  name: string;
-  category: string;
-  serialNumber: string;
-  model: string;
-  brand: string;
-  purchaseDate: string;        // ISO date string
-  lastMaintenanceDate: string; // ISO date string
-  location: string;
-  availability: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-}
+
 
 export interface Resource {
   _id: string;
@@ -54,6 +56,81 @@ export interface CreateResourcePayload {
   role: string;
   availability: boolean;
 }
+
+export interface UpdateResourcePayload {
+  type?: "Human" | "Equipment";
+  name?: string;
+  role?: string;
+  availability?: boolean;
+}
+
+export type TaskPriority = "HIGH" | "MEDIUM" | "LOW";
+
+export type TaskStatus = "À faire" | "En cours" | "Terminé";
+
+/** Représentation frontend d'un ObjectId MongoDB. */
+export type ObjectId = string;
+
+export interface BackendTask {
+  _id: ObjectId;
+  title: string;
+  description?: string;
+  projectId: ObjectId;
+  duration: number;
+  priority: TaskPriority;
+  status: TaskStatus;
+  progress: number;
+  /** Peut être peuplé par l’API (`name`) ou seulement l’id */
+  assignedTo?: ObjectId | { _id: ObjectId; name: string; email?: string } | null;
+  /** Identifiants des tâches dont celle-ci dépend. */
+  dependsOn?: ObjectId[];
+  /** Dates optionnelles (peuvent être calculées côté frontend pour le Gantt). */
+  startDate?: string;
+  endDate?: string;
+  createdAt: string;
+}
+
+export interface BackendUser {
+  _id: string;
+  name: string;
+  email?: string;
+  createdAt?: string;
+}
+
+export type ProjectType =
+  | "Construction"
+  | "Rénovation"
+  | "Maintenance"
+  | "Autre";
+
+export interface Project {
+  _id: string; // MongoDB ObjectId
+  name: string;
+  description: string;
+  startDate: string;
+  endDate?: string;
+  status: "En cours" | "Terminé" | "En retard";
+  type: ProjectType;
+  budget?: number;
+  location?: string;
+  createdBy: string;
+}
+
+export interface Equipment {
+  _id?: string;
+  name: string;
+  category: string;
+  serialNumber: string;
+  model: string;
+  brand: string;
+  purchaseDate: string;        // ISO date string
+  lastMaintenanceDate: string; // ISO date string
+  location: string;
+  availability: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Human {
   _id: string;
   firstName: string;
@@ -68,17 +145,12 @@ export interface Human {
   createdAt?: string;
   updatedAt?: string;
 }
-export interface UpdateResourcePayload {
-  type?: "Human" | "Equipment";
-  name?: string;
-  role?: string;
-  availability?: boolean;
-}
+
 export interface Task {
   _id: number;
   title: string;
   project: string;
-  description:string;
+  description: string;
 }
 
 // ---------- API error type ----------

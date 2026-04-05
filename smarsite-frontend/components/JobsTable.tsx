@@ -10,7 +10,8 @@ import {
   Users,
   Clock,
   FileText,
-  AlertCircle,
+  TrendingUp,
+  ClipboardList,
 } from "lucide-react";
 
 interface JobsTableProps {
@@ -66,6 +67,8 @@ export default function JobsTable({ jobs, onDelete }: JobsTableProps) {
               <th className="px-6 py-5 text-left text-sm font-semibold text-[#0b4f6c] dark:text-gray-200 tracking-wide">DÉBUT</th>
               <th className="px-6 py-5 text-left text-sm font-semibold text-[#0b4f6c] dark:text-gray-200 tracking-wide">FIN</th>
               <th className="px-6 py-5 text-left text-sm font-semibold text-[#0b4f6c] dark:text-gray-200 tracking-wide">STATUT</th>
+              <th className="px-6 py-5 text-left text-sm font-semibold text-[#0b4f6c] dark:text-gray-200 tracking-wide">AVANCEMENT</th>
+
               <th className="px-6 py-5 text-left text-sm font-semibold text-[#0b4f6c] dark:text-gray-200 tracking-wide">RESSOURCES</th>
               <th className="px-6 py-5 text-right text-sm font-semibold text-[#0b4f6c] dark:text-gray-200 tracking-wide">ACTIONS</th>
             </tr>
@@ -74,7 +77,7 @@ export default function JobsTable({ jobs, onDelete }: JobsTableProps) {
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
             {jobs.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-16 text-center">
+                <td colSpan={7} className="px-6 py-16 text-center">
                   <div className="flex flex-col items-center gap-4 text-gray-500 dark:text-gray-400">
                     <Briefcase size={48} className="text-gray-300 dark:text-gray-600 opacity-60" />
                     <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300">Aucun job trouvé</h3>
@@ -139,7 +142,34 @@ export default function JobsTable({ jobs, onDelete }: JobsTableProps) {
                       {job.status}
                     </span>
                   </td>
-
+                  <td className="px-6 py-5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className="inline-flex items-center rounded-full border border-[#0b4f6c]/20 dark:border-[#0b4f6c]/40 bg-[#0b4f6c]/5 dark:bg-[#0b4f6c]/15 px-2.5 py-0.5 text-xs font-semibold text-[#0b4f6c] dark:text-[#0b4f6c]/90 tabular-nums"
+                        title="Avancement du suivi"
+                      >
+                        {typeof job.progressPercentage === "number"
+                          ? `${job.progressPercentage}%`
+                          : "—"}
+                      </span>
+                      <Link
+                        href={`/jobs/${job._id}/progress`}
+                        className="inline-flex items-center justify-center p-3 rounded-xl bg-blue-50 dark:bg-blue-950/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400 transition-all hover:shadow-sm"
+                        aria-label={`Progression — ${job.title}`}
+                        title="Voir le suivi"
+                      >
+                        <TrendingUp size={18} />
+                      </Link>
+                      <Link
+                        href={`/jobs/${job._id}/attendance`}
+                        className="inline-flex items-center justify-center p-3 rounded-xl bg-orange-50 dark:bg-orange-950/20 hover:bg-orange-100 dark:hover:bg-orange-900/40 text-orange-600 dark:text-orange-400 transition-all hover:shadow-sm"
+                        aria-label={`Pointage — ${job.title}`}
+                        title="Pointage"
+                      >
+                        <ClipboardList size={18} />
+                      </Link>
+                    </div>
+                  </td>
                   {/* Ressources */}
                   <td className="px-6 py-5">
                     <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
@@ -158,7 +188,7 @@ export default function JobsTable({ jobs, onDelete }: JobsTableProps) {
                       >
                         <Pencil size={18} />
                       </Link>
-                      <button
+                  <button
                         onClick={() => onDelete(job)}
                         className="p-3 rounded-xl bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 transition-all hover:shadow-sm"
                         aria-label={`Supprimer ${job.title}`}

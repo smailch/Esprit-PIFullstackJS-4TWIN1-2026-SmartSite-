@@ -2,34 +2,27 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { JobsModule } from './jobs/jobs.module';
 import { ResourcesModule } from './resources/resources.module';
+import { ProjectsModule } from './projects/projects.module';
+import { TasksModule } from './tasks/tasks.module';
+import { UsersModule } from './users/users.module';
 import { HumanResourcesModule } from './human-resources/human-resources.module';
 import { EquipmentResourcesModule } from './equipment-resources/equipment-resources.module';
-import { TaskModule } from './task/task.module';
-import { MulterModule } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { AttendanceModule } from './attendance/attendance.module';
+
 @Module({
   imports: [
     // Connexion MongoDB Atlas
     MongooseModule.forRoot(
-  'mongodb+srv://mourad:mourad@smartsite.poyscqk.mongodb.net/smartsite?retryWrites=true&w=majority'
+      'mongodb+srv://mourad:mourad@smartsite.poyscqk.mongodb.net/smartsite?retryWrites=true&w=majority'
     ),
     JobsModule,
     ResourcesModule,
+    ProjectsModule, // Ajout du module Projects
+    TasksModule, // Ajout du module Tasks
+    UsersModule,
     HumanResourcesModule,
     EquipmentResourcesModule,
-    TaskModule,
-    
-    
-    MulterModule.register({
-      storage: diskStorage({
-        destination: './uploads',
-        filename: (req, file, cb) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-          cb(null, uniqueSuffix + extname(file.originalname));
-        },
-      }),
-    }),
+    AttendanceModule,
   ],
   controllers: [],
   providers: [],

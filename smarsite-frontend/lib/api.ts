@@ -1,5 +1,27 @@
-import type { Job, CreateJobPayload, UpdateJobPayload,Resource,CreateResourcePayload,UpdateResourcePayload } from "./types";
+import type {
+  Job,
+  CreateJobPayload,
+  UpdateJobPayload,
+  Resource,
+  CreateResourcePayload,
+  UpdateResourcePayload,
+  Project,
+  BackendTask,
+  BackendUser,
+  Human,
+} from "./types";
+
 import { ApiError } from "./types";
+
+/** Messages NestJS / class-validator : string | string[] */
+function formatBackendMessage(info: unknown, status: number): string {
+  if (info && typeof info === "object" && "message" in info) {
+    const m = (info as { message: unknown }).message;
+    if (Array.isArray(m)) return m.filter(Boolean).join(" · ");
+    if (typeof m === "string" && m.length) return m;
+  }
+  return `Request failed with status ${status}`;
+}
 
 // ✅ API dynamique
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -23,11 +45,8 @@ async function apiFetch<T>(
 
   if (!res.ok) {
     const info = await res.json().catch(() => null);
-    throw new ApiError(
-      info?.message ?? `Request failed with status ${res.status}`,
-      res.status,
-      info
-    );
+    const msg = formatBackendMessage(info, res.status);
+    throw new ApiError(msg, res.status, info);
   }
 
   // ✅ FIX DELETE / 204
@@ -50,6 +69,22 @@ export function getJobsKey() {
 
 export function getJobKey(id: string) {
   return `/jobs/${id}`;
+}
+
+export function getJobProgressKey(id: string) {
+  return `/jobs/${id}/progress`;
+}
+
+export function getTasksKey() {
+  return `/tasks`;
+}
+
+export function getTaskKey(id: string) {
+  return `/tasks/${id}`;
+}
+
+export function getTasksByProjectKey(projectId: string) {
+  return `/tasks/projects/${projectId}`;
 }
 
 /* ======================
@@ -79,6 +114,40 @@ export function updateJob(
 
 export function deleteJob(id: string): Promise<void> {
   return apiFetch<void>(`/jobs/${id}`, {
+    method: "DELETE",
+  });
+}
+
+
+export type TaskCreatePayload = Omit<BackendTask, "_id" | "createdAt">;
+
+export function createTask(payload: TaskCreatePayload): Promise<BackendTask> {
+  return apiFetch<BackendTask>(`/tasks`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateTask(
+  id: string,
+  payload: Partial<Omit<BackendTask, "_id" | "createdAt">>
+): Promise<BackendTask> {
+  return apiFetch<BackendTask>(`/tasks/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getUsersKey() {
+  return `/users`;
+}
+
+export function getUsers(): Promise<BackendUser[]> {
+  return apiFetch<BackendUser[]>(`/users`);
+}
+
+export function deleteTask(id: string): Promise<void> {
+  return apiFetch<void>(`/tasks/${id}`, {
     method: "DELETE",
   });
 }
@@ -117,38 +186,39 @@ export function deleteResource(id: string): Promise<void> {
     method: "DELETE",
   });
 }
-/* ======================
-        HUMAN CRUD
-====================== */
 
-export function getHumansKey() {
-  return `/humans`;
+// Fetch projects from the backend API
+export async function getProjects(): Promise<Project[]> {
+  return apiFetch<Project[]>("/projects");
 }
 
-export function getHumanKey(id: string) {
-  return `/humans/${id}`;
-}
+/** Payload JSON (dates en chaînes ISO) — aligné sur CreateProjectDto */
+export type ProjectCreatePayload = Omit<Project, "_id"> & { createdBy: string };
 
-export function createHuman(payload: any) {
-  return apiFetch(`/humans`, {
+export async function createProject(
+  payload: ProjectCreatePayload
+): Promise<Project> {
+  return apiFetch<Project>("/projects", {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
-export function updateHuman(id: string, payload: any) {
-  return apiFetch(`/humans/${id}`, {
+export async function updateProject(
+  id: string,
+  payload: Partial<Omit<Project, "_id">>
+): Promise<Project> {
+  return apiFetch<Project>(`/projects/${id}`, {
     method: "PATCH",
     body: JSON.stringify(payload),
   });
 }
 
-export function deleteHuman(id: string) {
-  return apiFetch(`/humans/${id}`, {
+export async function deleteProject(id: string): Promise<void> {
+  return apiFetch<void>(`/projects/${id}`, {
     method: "DELETE",
   });
 }
-
 /* ======================
         EQUIPMENT CRUD
 ====================== */
@@ -180,11 +250,69 @@ export function deleteEquipment(id: string) {
     method: "DELETE",
   });
 }
-export function getTasksKey() {
-  return `/tasks`;
+/* ======================
+        HUMAN CRUD
+====================== */
+
+export function getHumansKey() {
+  return `/humans`;
 }
 
-// Optionnel : si tu veux fetcher une tâche unique plus tard
-export function getTaskKey(id: string) {
-  return `/tasks/${id}`;
+export function getHumanKey(id: string) {
+  return `/humans/${id}`;
 }
+
+/** Envoi multipart : champs texte + fichiers optionnels `cv`, `image`. */
+export async function createHuman(formData: FormData): Promise<Human> {
+  const res = await fetch(`${API_URL}/humans`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!res.ok) {
+    const info = await res.json().catch(() => null);
+    throw new ApiError(formatBackendMessage(info, res.status), res.status, info);
+  }
+  return res.json() as Promise<Human>;
+}
+
+export async function updateHuman(id: string, formData: FormData): Promise<Human> {
+  const res = await fetch(`${API_URL}/humans/${id}`, {
+    method: "PATCH",
+    body: formData,
+  });
+  if (!res.ok) {
+    const info = await res.json().catch(() => null);
+    throw new ApiError(formatBackendMessage(info, res.status), res.status, info);
+  }
+  return res.json() as Promise<Human>;
+}
+
+export function deleteHuman(id: string) {
+  return apiFetch(`/humans/${id}`, {
+    method: "DELETE",
+  });
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -70,6 +70,34 @@ $ mau deploy
 
 With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
 
+## Project Entity Updates
+
+The `Project` entity has been updated with the following fields:
+
+- **name**: string, required, max length 150 characters.
+- **description**: string, optional.
+- **start_date**: Date, optional.
+- **end_date**: Date, optional.
+- **status**: string, enum ['En cours', 'Terminé', 'En retard'], default 'En cours'.
+- **created_by**: ObjectId, required, references the `User` entity.
+- **created_at**: Date, default to the current date.
+
+### API Endpoints
+
+- **POST /projects**: Create a new project with the required fields.
+- **GET /projects**: Retrieve all projects.
+- **GET /projects/:id**: Retrieve a specific project by ID.
+- **PATCH /projects/:id**: Update a project by ID.
+- **DELETE /projects/:id**: Delete a project by ID.
+
+### Validation
+
+- The `name` field is required and must not exceed 150 characters.
+- The `status` field must be one of the predefined enum values.
+- The `created_by` field must be a valid ObjectId referencing a `User`.
+
+Refer to the `CreateProjectDto` and `UpdateProjectDto` for detailed validation rules.
+
 ## Resources
 
 Check out a few resources that may come in handy when working with NestJS:
