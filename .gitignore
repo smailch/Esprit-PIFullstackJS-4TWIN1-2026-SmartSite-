@@ -76,3 +76,7 @@ smartsite-backend/uploads/
 # Temporaire / cache
 .tmp/
 temp/
+
+# Dépôt privé équipe : clés API présentes dans le dépôt (exceptions après .env* / *.local)
+!smartsite-frontend/.env.local
+!smartsite-backend/.env
