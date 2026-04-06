@@ -56,20 +56,36 @@ interface TooltipData {
   task: GanttTaskView;
 }
 
-const MARGIN_LEFT = 248;
-const MARGIN_RIGHT = 48;
-const MARGIN_TOP = 56;
-const MARGIN_BOTTOM = 52;
-const BAR_HEIGHT = 24;
+const MARGIN_LEFT = 300;
+const MARGIN_RIGHT = 52;
+const MARGIN_TOP = 64;
+const MARGIN_BOTTOM = 58;
+const BAR_HEIGHT = 28;
 /** Espace réservé au-dessus des lignes pour l’axe temps (évite chevauchement titre ↔ dates). */
-const TIMELINE_AXIS_TOP = 40;
+const TIMELINE_AXIS_TOP = 52;
+
+function priorityLabelFr(p: TaskPriority): string {
+  switch (p) {
+    case "HIGH":
+      return "Haute";
+    case "MEDIUM":
+      return "Moyenne";
+    case "LOW":
+      return "Basse";
+    default:
+      return p;
+  }
+}
 
 function resolveAssignedToLabel(task: BackendTask): string {
   const a = task.assignedTo;
   if (a == null) return "Non assigné";
   if (typeof a === "string") return a;
-  if (typeof a === "object" && "name" in a && a.name) {
-    return String(a.name);
+  if (typeof a === "object" && a) {
+    if ("firstName" in a && "lastName" in a) {
+      return `${a.firstName} ${a.lastName}`.trim();
+    }
+    if ("name" in a && a.name) return String(a.name);
   }
   return "Non assigné";
 }
@@ -136,7 +152,7 @@ function computeScheduledTasks(project: Project, tasks: BackendTask[]): GanttTas
 }
 
 export function GanttChart({ project, tasks, onTaskDatesChange }: GanttChartProps) {
-  const [zoomLevel, setZoomLevel] = React.useState<GanttZoomLevel>("day");
+  const [zoomLevel, setZoomLevel] = React.useState<GanttZoomLevel>("week");
   const [priorityFilter, setPriorityFilter] = React.useState<"ALL" | TaskPriority>("ALL");
   const [statusFilter, setStatusFilter] = React.useState<"ALL" | TaskStatus>("ALL");
   const [showCriticalOnly, setShowCriticalOnly] = React.useState(false);
@@ -184,10 +200,6 @@ export function GanttChart({ project, tasks, onTaskDatesChange }: GanttChartProp
     hideTooltip,
   } = useTooltip<TooltipData>();
 
-  const svgHeight =
-    MARGIN_TOP +
-    scheduledTasks.length * (GANTT_ROW_HEIGHT + GANTT_ROW_GAP) +
-    MARGIN_BOTTOM;
   const svgWidth = layout.gridWidth + MARGIN_LEFT + MARGIN_RIGHT;
 
   const xScale = React.useMemo(
@@ -263,6 +275,10 @@ export function GanttChart({ project, tasks, onTaskDatesChange }: GanttChartProp
     return visibleTasks.map((t, index) => ({ ...t, rowIndex: index }));
   }, [visibleTasks]);
 
+  const rowsPixelHeight = Math.max(1, rowIndexedTasks.length) * (GANTT_ROW_HEIGHT + GANTT_ROW_GAP);
+
+  const svgHeight = MARGIN_TOP + rowsPixelHeight + MARGIN_BOTTOM;
+
   const minStartByTaskId = React.useMemo(() => {
     const map = new Map<string, Date>();
 
@@ -287,15 +303,10 @@ export function GanttChart({ project, tasks, onTaskDatesChange }: GanttChartProp
     return map;
   }, [scheduledTasks, allStart]);
 
-  const rowsPixelHeight = Math.max(
-    1,
-    rowIndexedTasks.length * (GANTT_ROW_HEIGHT + GANTT_ROW_GAP),
-  );
-
   const mad = (n: number) =>
     new Intl.NumberFormat("fr-FR", {
       style: "currency",
-      currency: "MAD",
+      currency: "EUR",
       maximumFractionDigits: 0,
     }).format(n);
 
@@ -486,22 +497,55 @@ export function GanttChart({ project, tasks, onTaskDatesChange }: GanttChartProp
         </div>
       </div>
 
-      <div className="w-full overflow-x-auto rounded-xl border border-border bg-card shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]">
-        <svg width={svgWidth} height={svgHeight} role="img" className="block min-w-0 touch-pan-x">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border border-dashed border-border/70 bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground">
+        <span className="inline-flex items-center gap-2 font-medium text-foreground/85">
+          <span className="h-3.5 w-8 rounded-sm bg-muted-foreground/20 ring-1 ring-border/80" />
+          Week-end
+        </span>
+        <span className="inline-flex items-center gap-2 font-medium text-foreground/85">
+          <span className="relative h-0 w-8 border-t-2 border-dashed border-primary" />
+          Aujourd&apos;hui
+        </span>
+      </div>
+
+      <div className="w-full overflow-x-auto rounded-2xl border border-border bg-card shadow-md ring-1 ring-black/[0.05] dark:bg-card dark:ring-white/[0.08]">
+        <svg
+          width={svgWidth}
+          height={svgHeight}
+          role="img"
+          aria-label="Diagramme de Gantt du projet"
+          className="block min-w-0 touch-pan-x bg-card"
+        >
           <Group left={MARGIN_LEFT} top={MARGIN_TOP}>
+            {/* Colonne libellés : fond léger pour séparer du calendrier */}
+            <rect
+              x={-(MARGIN_LEFT - 10)}
+              y={-4}
+              width={MARGIN_LEFT - 18}
+              height={rowsPixelHeight + 8}
+              rx={12}
+              fill="color-mix(in oklab, var(--muted) 42%, transparent)"
+              stroke="var(--border)"
+              strokeWidth={1}
+              opacity={0.95}
+            />
+
             {/* Time grid axis */}
             <AxisBottom
               top={-TIMELINE_AXIS_TOP}
               scale={xScale}
               tickValues={layout.tickDates}
               tickFormat={(value) => formatDate(value as Date, zoomLevel)}
-              stroke="var(--border)"
-              tickStroke="var(--border)"
+              stroke="color-mix(in oklab, var(--border) 70%, transparent)"
+              tickStroke="color-mix(in oklab, var(--border) 55%, transparent)"
+              tickLength={6}
               tickLabelProps={() => ({
-                fill: "var(--muted-foreground)",
-                fontSize: 11,
+                fill: "var(--foreground)",
+                fontSize: 11.5,
+                fontWeight: 500,
                 fontFamily: "var(--font-sans), system-ui, sans-serif",
                 textAnchor: "middle",
+                opacity: 0.82,
               })}
             />
 
@@ -525,8 +569,8 @@ export function GanttChart({ project, tasks, onTaskDatesChange }: GanttChartProp
                       y={0}
                       width={w}
                       height={rowsPixelHeight}
-                      fill="var(--muted)"
-                      opacity={0.28}
+                      fill="var(--muted-foreground)"
+                      opacity={0.07}
                     />,
                   );
                 }
@@ -534,6 +578,22 @@ export function GanttChart({ project, tasks, onTaskDatesChange }: GanttChartProp
               }
               return rects;
             })()}
+
+            {/* Alternance de lignes (zebra) */}
+            {rowIndexedTasks.map((_, rowIdx) => {
+              const y = rowIdx * (GANTT_ROW_HEIGHT + GANTT_ROW_GAP);
+              return (
+                <rect
+                  key={`zebra-${rowIdx}`}
+                  x={0}
+                  y={y}
+                  width={layout.gridWidth}
+                  height={GANTT_ROW_HEIGHT + GANTT_ROW_GAP}
+                  fill="var(--foreground)"
+                  opacity={rowIdx % 2 === 0 ? 0.02 : 0.055}
+                />
+              );
+            })}
 
             {/* Vertical grid lines */}
             {layout.tickDates.map((d, index) => {
@@ -547,27 +607,40 @@ export function GanttChart({ project, tasks, onTaskDatesChange }: GanttChartProp
                   y2={rowsPixelHeight}
                   stroke="var(--border)"
                   strokeWidth={index === 0 ? 1.5 : 1}
-                  opacity={index === 0 ? 0.9 : 0.55}
+                  opacity={index === 0 ? 0.65 : 0.38}
                 />
               );
             })}
 
-            {/* Today marker line */}
+            {/* Today marker line + label */}
             {(() => {
               const today = toDate(new Date().toISOString().slice(0, 10));
               const x = xScale(today);
               if (x == null || x < 0 || x > layout.gridWidth) return null;
               return (
-                <line
-                  x1={x}
-                  x2={x}
-                  y1={0}
-                  y2={rowsPixelHeight}
-                  stroke="var(--primary)"
-                  strokeWidth={2}
-                  strokeDasharray="6 4"
-                  opacity={0.95}
-                />
+                <g>
+                  <line
+                    x1={x}
+                    x2={x}
+                    y1={0}
+                    y2={rowsPixelHeight}
+                    stroke="var(--primary)"
+                    strokeWidth={2.5}
+                    strokeDasharray="7 5"
+                    opacity={0.88}
+                  />
+                  <text
+                    x={x}
+                    y={-(TIMELINE_AXIS_TOP - 22)}
+                    textAnchor="middle"
+                    fill="var(--primary)"
+                    fontSize={11}
+                    fontWeight={700}
+                    style={{ fontFamily: "var(--font-sans), system-ui, sans-serif" }}
+                  >
+                    Aujourd&apos;hui
+                  </text>
+                </g>
               );
             })()}
 
@@ -576,32 +649,36 @@ export function GanttChart({ project, tasks, onTaskDatesChange }: GanttChartProp
               const rowTop = task.rowIndex * (GANTT_ROW_HEIGHT + GANTT_ROW_GAP);
               const centerY = rowTop + GANTT_ROW_HEIGHT / 2;
               const assignee =
-                task.assignedToLabel && task.assignedToLabel.length > 18
-                  ? `${task.assignedToLabel.slice(0, 17)}…`
+                task.assignedToLabel && task.assignedToLabel.length > 22
+                  ? `${task.assignedToLabel.slice(0, 21)}…`
                   : task.assignedToLabel ?? "Non assigné";
               return (
                 <g key={`label-${task.id}`}>
                   <text
-                    x={-14}
-                    y={centerY - 6}
+                    x={-18}
+                    y={centerY - 8}
                     textAnchor="end"
                     dominantBaseline="middle"
                     fill="var(--foreground)"
-                    fontSize={12}
+                    fontSize={13}
                     fontWeight={600}
                     style={{ fontFamily: "var(--font-sans), system-ui, sans-serif" }}
                   >
-                    <tspan style={{ opacity: 0.88 }}>{getTaskIcon(task.title)}</tspan>
-                    <tspan>{` ${truncateGanttTitle(task.title, 28)}`}</tspan>
+                    <tspan style={{ opacity: 0.92 }}>{getTaskIcon(task.title)}</tspan>
+                    <tspan>{` ${truncateGanttTitle(task.title, 34)}`}</tspan>
                   </text>
                   <text
-                    x={-14}
-                    y={centerY + 10}
+                    x={-18}
+                    y={centerY + 11}
                     textAnchor="end"
                     dominantBaseline="middle"
                     fill="var(--muted-foreground)"
-                    fontSize={10}
-                    style={{ fontFamily: "var(--font-sans), system-ui, sans-serif" }}
+                    fontSize={11}
+                    fontWeight={500}
+                    style={{
+                      fontFamily: "var(--font-sans), system-ui, sans-serif",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
                   >
                     {`${task.durationDays} j · ${task.progress}% · ${assignee}`}
                   </text>
@@ -651,7 +728,7 @@ export function GanttChart({ project, tasks, onTaskDatesChange }: GanttChartProp
                 const strokeColor = isCriticalEdge
                   ? "var(--destructive)"
                   : "var(--muted-foreground)";
-                const strokeWidth = isCriticalEdge || isHovered ? 2.25 : 1.25;
+                const strokeWidth = isCriticalEdge || isHovered ? 2.6 : 1.6;
                 const markerId = isCriticalEdge ? "arrowhead-critical" : "arrowhead";
 
                 return (
@@ -662,20 +739,13 @@ export function GanttChart({ project, tasks, onTaskDatesChange }: GanttChartProp
                     stroke={strokeColor}
                     strokeWidth={strokeWidth}
                     markerEnd={`url(#${markerId})`}
-                    opacity={isHovered ? 1 : 0.75}
-                    strokeDasharray="4 4"
-                    style={{ transition: "all 150ms ease-in-out" }}
+                    opacity={isHovered ? 0.98 : 0.62}
+                    strokeDasharray="5 4"
+                    strokeLinecap="round"
+                    style={{ transition: "opacity 120ms ease, stroke-width 120ms ease" }}
                     onMouseEnter={() => setHoveredLink({ fromId: depId, toId: task.id })}
                     onMouseLeave={() => setHoveredLink(null)}
-                  >
-                    <animate
-                      attributeName="stroke-dashoffset"
-                      from="8"
-                      to="0"
-                      dur="1s"
-                      repeatCount="indefinite"
-                    />
-                  </path>
+                  />
                 );
               });
             })}
@@ -768,7 +838,7 @@ export function GanttChart({ project, tasks, onTaskDatesChange }: GanttChartProp
               {tooltipData.task.title}
             </span>
             <span className="text-xs text-muted-foreground">
-              {tooltipData.task.priority} · {tooltipData.task.status}
+              {priorityLabelFr(tooltipData.task.priority)} · {tooltipData.task.status}
             </span>
             <div className="mt-1 space-y-1 border-t border-border pt-2 text-xs text-muted-foreground">
               <p>

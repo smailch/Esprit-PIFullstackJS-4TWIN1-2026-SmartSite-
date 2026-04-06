@@ -196,8 +196,8 @@ export function GanttTaskBar(props: GanttTaskBarProps) {
         y={visualY}
         width={width}
         height={barHeight}
-        rx={6}
-        ry={6}
+        rx={8}
+        ry={8}
         fill={`url(#${gradientId})`}
         stroke={strokeColor}
         strokeWidth={strokeWidth}
@@ -216,9 +216,9 @@ export function GanttTaskBar(props: GanttTaskBarProps) {
           x={visualX + 1}
           y={visualY + barHeight / 2 - (barHeight * 0.35) / 2}
           width={(Math.max(4, width - 2) * clampedProgress) / 100}
-          height={barHeight * 0.35}
-          rx={4}
-          ry={4}
+          height={barHeight * 0.36}
+          rx={5}
+          ry={5}
           fill={progressFill}
           opacity={0.95}
           style={{ transition: "all 150ms ease-in-out" }}
@@ -233,8 +233,8 @@ export function GanttTaskBar(props: GanttTaskBarProps) {
           textAnchor="middle"
           dominantBaseline="middle"
           fill={clampedProgress > 52 ? "#fafafa" : "var(--foreground)"}
-          fontSize={10}
-          fontWeight={600}
+          fontSize={11}
+          fontWeight={700}
           style={{ pointerEvents: "none" }}
         >
           {`${Math.round(clampedProgress)}%`}
@@ -242,29 +242,33 @@ export function GanttTaskBar(props: GanttTaskBarProps) {
       )}
 
       {/* Status badge in top-right corner of the bar */}
-      {width > 40 && (
+      {width > 48 && (
         <g>
           <rect
-            x={visualX + width - 32}
-            y={visualY - 9}
-            width={30}
-            height={14}
-            rx={7}
-            ry={7}
+            x={visualX + width - 44}
+            y={visualY - 10}
+            width={42}
+            height={15}
+            rx={8}
+            ry={8}
             fill={statusColor}
-            opacity={0.9}
+            opacity={0.92}
           />
           <text
-            x={visualX + width - 17}
-            y={visualY + 1.5}
+            x={visualX + width - 23}
+            y={visualY + 1.25}
             textAnchor="middle"
             dominantBaseline="middle"
             fill="#fafafa"
-            fontSize={9.5}
+            fontSize={9}
             fontWeight={600}
             style={{ pointerEvents: "none" }}
           >
-            {status === "Terminé" ? "Done" : status === "En cours" ? "En cours" : "À faire"}
+            {status === "Terminé"
+              ? "Fait"
+              : status === "En cours"
+                ? "Actif"
+                : "À faire"}
           </text>
         </g>
       )}

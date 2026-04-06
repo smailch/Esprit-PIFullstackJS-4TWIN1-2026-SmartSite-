@@ -193,7 +193,7 @@ Génère une liste de tâches détaillées en JSON pour ce projet :
 Type: ${project.type}
 Nom: ${project.name}
 Description: ${project.description}
-Budget: ${project.budget} MAD
+Budget: ${project.budget} EUR
 Durée totale indicative: ${projectDurationDaysVal} jours
 Début projet (YYYY-MM-DD): ${periodStart}
 Fin projet (YYYY-MM-DD): ${periodEnd}
@@ -206,7 +206,7 @@ Les tâches DOIVENT être :
 4. Total des durées ≈ ${Math.round(projectDurationDaysVal * 0.8)} jours
 5. Priorités : HIGH, MEDIUM, LOW uniquement
 6. Chaque tâche a **startDate** et **endDate** au format **"YYYY-MM-DD"** :
-   - Plage [startDate, endDate] cohérente avec **duration** (écart d’environ **duration** jours : endDate = startDate + duration jours calendaires).
+   - Plage [startDate, endDate] cohérente avec **duration** (écart d’environ **duration** jours calendaires : endDate = startDate + duration jours calendaires).
    - Si le projet a des dates début/fin, toutes les tâches doivent tomber **dans** cette fenêtre (sauf impossibilité logique).
    - Pour chaque indice j dans **dependsOnIndices** : la tâche j doit avoir **endDate** **strictement avant** le **startDate** de cette tâche (au moins le lendemain).
 
@@ -268,12 +268,19 @@ Règles pour "dependsOnIndices" (obligatoire pour chaque tâche, tableau d'entie
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      const readable = openRouterErrorMessage(errorData);
+      let readable = openRouterErrorMessage(errorData);
+      /** OpenRouter returns "User not found" (401) for bad/revoked keys — not an app user issue. */
+      if (response.status === 401) {
+        readable =
+          "OpenRouter rejected the API key (invalid, expired, or revoked). Set OPENROUTER_API_KEY in smarsite-frontend/.env.local to a valid key from https://openrouter.ai/keys — the raw message is often “User not found.”";
+      }
       console.error("OpenRouter API Error:", response.status, errorData);
+      const includeDetails =
+        response.status !== 401 && Object.keys(errorData as object).length > 0;
       return NextResponse.json(
         {
           error: readable || `OpenRouter HTTP ${response.status}`,
-          details: errorData,
+          ...(includeDetails ? { details: errorData } : {}),
         },
         { status: response.status >= 400 && response.status < 600 ? response.status : 502 },
       );
