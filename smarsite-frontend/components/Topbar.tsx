@@ -189,8 +189,8 @@ export default function Topbar() {
                   >
                     <span style={{ fontSize: '18px' }}>👤</span>
                     <div>
-                      <div style={{ fontSize: '13px', fontWeight: '600' }}>Éditer le profil</div>
-                      <div style={{ fontSize: '11px', color: '#aaa', marginTop: '2px' }}>Informations, mot de passe</div>
+                      <div style={{ fontSize: '13px', fontWeight: '600' }}>Edit profil</div>
+                      <div style={{ fontSize: '11px', color: '#aaa', marginTop: '2px' }}>Informations, password</div>
                     </div>
                   </button>
 
@@ -210,8 +210,8 @@ export default function Topbar() {
                   >
                     <span style={{ fontSize: '18px' }}>🚪</span>
                     <div>
-                      <div style={{ fontSize: '13px', fontWeight: '600' }}>Déconnexion</div>
-                      <div style={{ fontSize: '11px', color: '#aaa', marginTop: '2px' }}>Fermer la session</div>
+                      <div style={{ fontSize: '13px', fontWeight: '600' }}>Logout</div>
+                      <div style={{ fontSize: '11px', color: '#aaa', marginTop: '2px' }}>Close session</div>
                     </div>
                   </button>
 

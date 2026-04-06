@@ -9,7 +9,7 @@ const MODELS_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
 const API = 'http://localhost:3200';
 
 // ══════════════════════════════════════════════════════════════════
-//  POPUP FACE ID ENREGISTREMENT
+//  FACE ID REGISTRATION POPUP
 // ══════════════════════════════════════════════════════════════════
 const FaceRegisterPopup = ({ onClose, onSuccess }) => {
   const videoRef    = useRef(null);
@@ -18,7 +18,7 @@ const FaceRegisterPopup = ({ onClose, onSuccess }) => {
   const intervalRef = useRef(null);
 
   const [status,    setStatus]    = useState('loading');
-  const [statusMsg, setStatusMsg] = useState('Chargement des modèles IA...');
+  const [statusMsg, setStatusMsg] = useState('Loading AI models...');
   const [progress,  setProgress]  = useState(0);
   const [captured,  setCaptured]  = useState(false);
 
@@ -37,9 +37,9 @@ const FaceRegisterPopup = ({ onClose, onSuccess }) => {
     const init = async () => {
       try {
         const faceapi = window.faceapi;
-        if (!faceapi) { setStatus('error'); setStatusMsg("face-api.js non chargé dans layout.tsx."); return; }
+        if (!faceapi) { setStatus('error'); setStatusMsg("face-api.js not loaded in layout.tsx."); return; }
 
-        setProgress(20); setStatusMsg('Chargement des modèles IA...');
+        setProgress(20); setStatusMsg('Loading AI models...');
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri(MODELS_URL),
           faceapi.nets.faceLandmark68Net.loadFromUri(MODELS_URL),
@@ -47,7 +47,7 @@ const FaceRegisterPopup = ({ onClose, onSuccess }) => {
         ]);
         if (cancelled) return;
 
-        setProgress(70); setStatusMsg('Accès à la caméra...');
+        setProgress(70); setStatusMsg('Accessing camera...');
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'user', width: 640, height: 480 },
         });
@@ -56,12 +56,12 @@ const FaceRegisterPopup = ({ onClose, onSuccess }) => {
         streamRef.current = stream;
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
-        setProgress(100); setStatus('ready'); setStatusMsg('Prêt — cliquez sur "Capturer mon visage"');
+        setProgress(100); setStatus('ready'); setStatusMsg('Ready — click "Capture my face"');
 
       } catch (err) {
         if (cancelled) return;
         setStatus('error');
-        setStatusMsg(err.name === 'NotAllowedError' ? 'Accès caméra refusé.' : 'Erreur : ' + err.message);
+        setStatusMsg(err.name === 'NotAllowedError' ? 'Camera access denied.' : 'Error: ' + err.message);
       }
     };
     init();
@@ -70,7 +70,7 @@ const FaceRegisterPopup = ({ onClose, onSuccess }) => {
 
   const handleCapture = async () => {
     const faceapi = window.faceapi;
-    setStatus('scanning'); setStatusMsg('Analyse du visage en cours...');
+    setStatus('scanning'); setStatusMsg('Analyzing face...');
 
     const detection = await faceapi
       .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions({ inputSize: 320 }))
@@ -78,7 +78,7 @@ const FaceRegisterPopup = ({ onClose, onSuccess }) => {
       .withFaceDescriptor();
 
     if (!detection) {
-      setStatus('ready'); setStatusMsg('Aucun visage détecté. Réessayez.');
+      setStatus('ready'); setStatusMsg('No face detected. Please try again.');
       return;
     }
 
@@ -89,7 +89,7 @@ const FaceRegisterPopup = ({ onClose, onSuccess }) => {
     faceapi.draw.drawDetections(canvas, faceapi.resizeResults(detection, dims));
     faceapi.draw.drawFaceLandmarks(canvas, faceapi.resizeResults(detection, dims));
 
-    setStatus('success'); setStatusMsg('Visage capturé avec succès !');
+    setStatus('success'); setStatusMsg('Face captured successfully!');
     setCaptured(true);
     stopCamera();
     onSuccess(descriptor);
@@ -112,8 +112,8 @@ const FaceRegisterPopup = ({ onClose, onSuccess }) => {
           <div style={fS.logo}>Smartsite</div>
           <button onClick={handleClose} style={fS.closeBtn}>✕</button>
         </div>
-        <h3 style={fS.title}>Enregistrer mon Face ID</h3>
-        <p style={fS.subtitle}>Positionnez votre visage bien éclairé, face à la caméra.</p>
+        <h3 style={fS.title}>Register Face ID</h3>
+        <p style={fS.subtitle}>Position your face clearly in front of the camera.</p>
 
         <div style={{ ...fS.frame, borderColor: c, animation: status === 'ready' ? 'fRPulse 2s ease-in-out infinite' : 'none' }}>
           <video ref={videoRef} style={fS.video} playsInline muted />
@@ -176,7 +176,7 @@ const FaceRegisterPopup = ({ onClose, onSuccess }) => {
             fontWeight: '700', fontSize: '14px', cursor: status === 'scanning' ? 'not-allowed' : 'pointer',
             transition: '0.2s',
           }}>
-            {status === 'scanning' ? 'Analyse...' : '📸 Capturer mon visage'}
+            {status === 'scanning' ? 'Analyzing...' : '📸 Capture my face'}
           </button>
         )}
 
@@ -185,12 +185,12 @@ const FaceRegisterPopup = ({ onClose, onSuccess }) => {
             width: '100%', padding: '13px', borderRadius: '10px', border: 'none',
             backgroundColor: '#22c55e', color: 'white', fontWeight: '700', fontSize: '14px', cursor: 'pointer',
           }}>
-            Fermer ✓
+            Close ✓
           </button>
         )}
 
         <p style={{ fontSize: '11px', color: '#bbb', textAlign: 'center', margin: '12px 0 0' }}>
-          🔒 Traitement 100% local — aucune image envoyée au serveur
+          🔒 100% local processing — no image is sent to the server
         </p>
       </div>
     </div>
@@ -217,7 +217,7 @@ const fS = {
 };
 
 // ══════════════════════════════════════════════════════════════════
-//  PAGE PROFILE
+//  PROFILE PAGE
 // ══════════════════════════════════════════════════════════════════
 export default function ProfilePage() {
   const router  = useRouter();
@@ -255,7 +255,7 @@ export default function ProfilePage() {
         if (u.profileImage) setAvatar(u.profileImage);
         setFaceStatus(u.faceDescriptor?.length > 0 ? 'registered' : 'none');
       } catch {
-        setError('Impossible de charger le profil.');
+        setError('Unable to load profile.');
       } finally {
         setLoading(false);
       }
@@ -282,18 +282,18 @@ export default function ProfilePage() {
       await axios.put(`${API}/users/${payload.sub}`, data, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setSuccess('Profil mis à jour avec succès !');
-    } catch { setError('Erreur lors de la mise à jour.'); }
+      setSuccess('Profile updated successfully!');
+    } catch { setError('Failed to update profile.'); }
     finally  { setSaving(false); }
   };
 
   const handleChangePassword = async (e) => {
     e.preventDefault(); setSaving(true); setError(''); setSuccess('');
     if (form.newPassword !== form.confirmPassword) {
-      setError('Les mots de passe ne correspondent pas.'); setSaving(false); return;
+      setError('Passwords do not match.'); setSaving(false); return;
     }
     if (form.newPassword.length < 6) {
-      setError('Minimum 6 caractères.'); setSaving(false); return;
+      setError('Minimum 6 characters.'); setSaving(false); return;
     }
     try {
       const token   = localStorage.getItem('token');
@@ -301,9 +301,9 @@ export default function ProfilePage() {
       await axios.put(`${API}/users/${payload.sub}`, { password: form.newPassword }, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setSuccess('Mot de passe modifié !');
+      setSuccess('Password changed successfully!');
       setForm(f => ({ ...f, newPassword: '', confirmPassword: '' }));
-    } catch { setError('Erreur lors du changement de mot de passe.'); }
+    } catch { setError('Failed to change password.'); }
     finally  { setSaving(false); }
   };
 
@@ -318,20 +318,20 @@ export default function ProfilePage() {
       );
       if (res.data?.message === 'FACE_REGISTERED') {
         setFaceStatus('registered');
-        setSuccess('Face ID enregistré avec succès !');
+        setSuccess('Face ID registered successfully!');
       } else {
-        setError('Réponse inattendue : ' + JSON.stringify(res.data));
+        setError('Unexpected response: ' + JSON.stringify(res.data));
       }
     } catch (err) {
       const msg = err.response?.data?.message || err.message;
-      if (err.response?.status === 401) setError('Session expirée. Reconnectez-vous.');
-      else if (err.response?.status === 404) setError('Route /auth/face-register introuvable.');
-      else setError('Erreur enregistrement visage : ' + msg);
+      if (err.response?.status === 401) setError('Session expired. Please log in again.');
+      else if (err.response?.status === 404) setError('Route /auth/face-register not found.');
+      else setError('Face registration error: ' + msg);
     }
   };
 
   const handleDeleteFace = async () => {
-    if (!window.confirm('Supprimer votre Face ID ?')) return;
+    if (!window.confirm('Delete your Face ID?')) return;
     try {
       const token   = localStorage.getItem('token');
       const payload = getTokenPayload();
@@ -339,8 +339,8 @@ export default function ProfilePage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       setFaceStatus('none');
-      setSuccess('Face ID supprimé.');
-    } catch { setError('Erreur lors de la suppression.'); }
+      setSuccess('Face ID removed.');
+    } catch { setError('Failed to delete Face ID.'); }
   };
 
   const initials = form.fullName
@@ -367,7 +367,7 @@ export default function ProfilePage() {
         .avatar-wrap:hover .avatar-overlay { opacity: 1 !important; }
       `}</style>
 
-      <button onClick={() => router.back()} style={s.backBtn}>← Retour</button>
+      <button onClick={() => router.back()} style={s.backBtn}>← Back</button>
 
       <div style={s.body}>
 
@@ -381,7 +381,7 @@ export default function ProfilePage() {
             <div className="avatar-overlay" style={s.avatarOverlay}>📷</div>
           </div>
           <input ref={fileRef} type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} />
-          <div style={s.avatarName}>{form.fullName || 'Votre nom'}</div>
+          <div style={s.avatarName}>{form.fullName || 'Your name'}</div>
           <div style={s.avatarEmail}>{form.email}</div>
           <div style={{
             ...s.faceStatusBadge,
@@ -389,7 +389,7 @@ export default function ProfilePage() {
             border: `1px solid ${faceStatus === 'registered' ? '#86efac' : '#FDE68A'}`,
             color: faceStatus === 'registered' ? '#16a34a' : '#92400e',
           }}>
-            {faceStatus === 'registered' ? '✓ Face ID activé' : '○ Face ID non configuré'}
+            {faceStatus === 'registered' ? '✓ Face ID enabled' : '○ Face ID not configured'}
           </div>
         </div>
 
@@ -401,8 +401,8 @@ export default function ProfilePage() {
           {/* Tabs */}
           <div style={s.tabs}>
             {[
-              { key: 'info',     label: '👤 Informations' },
-              { key: 'security', label: '🔒 Sécurité' },
+              { key: 'info',     label: '👤 Information' },
+              { key: 'security', label: '🔒 Security' },
               { key: 'faceid',   label: '🤖 Face ID' },
             ].map(tab => (
               <button key={tab.key} className="tab-btn"
@@ -413,12 +413,12 @@ export default function ProfilePage() {
             ))}
           </div>
 
-          {/* TAB : INFORMATIONS */}
+          {/* TAB: INFORMATION */}
           {activeTab === 'info' && (
             <form onSubmit={handleSaveInfo} style={s.form}>
               <div style={s.row}>
                 <div style={s.field}>
-                  <label style={s.label}>Nom complet</label>
+                  <label style={s.label}>Full Name</label>
                   <div style={s.inputWrap}>
                     <span style={s.inputIcon}>👤</span>
                     <input type="text" placeholder="John Doe" style={s.input}
@@ -426,10 +426,10 @@ export default function ProfilePage() {
                   </div>
                 </div>
                 <div style={s.field}>
-                  <label style={s.label}>Téléphone</label>
+                  <label style={s.label}>Phone</label>
                   <div style={s.inputWrap}>
                     <span style={s.inputIcon}>📱</span>
-                    <input type="text" placeholder="8 chiffres" style={s.input}
+                    <input type="text" placeholder="8 digits" style={s.input}
                       value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
                   </div>
                 </div>
@@ -440,46 +440,46 @@ export default function ProfilePage() {
                   <span style={s.inputIcon}>📧</span>
                   <input type="email" value={form.email} style={s.input} disabled />
                 </div>
-                <p style={s.hint}>L'email ne peut pas être modifié.</p>
+                <p style={s.hint}>Email cannot be changed.</p>
               </div>
               <button type="submit" className="save-btn" disabled={saving} style={s.saveBtn}>
-                {saving ? 'Sauvegarde...' : '💾 Sauvegarder les modifications'}
+                {saving ? 'Saving...' : '💾 Save Changes'}
               </button>
             </form>
           )}
 
-          {/* TAB : SÉCURITÉ */}
+          {/* TAB: SECURITY */}
           {activeTab === 'security' && (
             <form onSubmit={handleChangePassword} style={s.form}>
               <div style={s.field}>
-                <label style={s.label}>Nouveau mot de passe</label>
+                <label style={s.label}>New Password</label>
                 <div style={s.inputWrap}>
                   <span style={s.inputIcon}>🔒</span>
-                  <input type="password" placeholder="Minimum 6 caractères" style={s.input}
+                  <input type="password" placeholder="Minimum 6 characters" style={s.input}
                     value={form.newPassword} onChange={e => setForm({ ...form, newPassword: e.target.value })} />
                 </div>
               </div>
               <div style={s.field}>
-                <label style={s.label}>Confirmer le mot de passe</label>
+                <label style={s.label}>Confirm Password</label>
                 <div style={s.inputWrap}>
                   <span style={s.inputIcon}>🔑</span>
-                  <input type="password" placeholder="Répétez le mot de passe" style={s.input}
+                  <input type="password" placeholder="Repeat your password" style={s.input}
                     value={form.confirmPassword} onChange={e => setForm({ ...form, confirmPassword: e.target.value })} />
                 </div>
                 {form.confirmPassword && (
                   <p style={{ fontSize: '12px', marginTop: '4px',
                     color: form.newPassword === form.confirmPassword ? '#22c55e' : '#ef4444' }}>
-                    {form.newPassword === form.confirmPassword ? '✓ Correspondent' : '✗ Ne correspondent pas'}
+                    {form.newPassword === form.confirmPassword ? '✓ Passwords match' : '✗ Passwords do not match'}
                   </p>
                 )}
               </div>
               <button type="submit" className="save-btn" disabled={saving} style={s.saveBtn}>
-                {saving ? 'Mise à jour...' : '🔐 Changer le mot de passe'}
+                {saving ? 'Updating...' : '🔐 Change Password'}
               </button>
             </form>
           )}
 
-          {/* TAB : FACE ID */}
+          {/* TAB: FACE ID */}
           {activeTab === 'faceid' && (
             <div style={s.form}>
               <div style={s.faceCard}>
@@ -497,24 +497,24 @@ export default function ProfilePage() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={s.faceCardTitle}>
-                    {faceStatus === 'registered' ? 'Face ID configuré ✓' : 'Face ID non configuré'}
+                    {faceStatus === 'registered' ? 'Face ID configured ✓' : 'Face ID not configured'}
                   </div>
                   <div style={s.faceCardDesc}>
                     {faceStatus === 'registered'
-                      ? 'Votre visage est enregistré. Connectez-vous par reconnaissance faciale.'
-                      : "Enregistrez votre visage pour vous connecter rapidement sans mot de passe."}
+                      ? 'Your face is registered. You can log in using facial recognition.'
+                      : "Register your face to log in quickly without a password using AI."}
                   </div>
                 </div>
               </div>
 
               <div style={s.howItWorks}>
-                <div style={s.howTitle}>Comment ça marche ?</div>
+                <div style={s.howTitle}>How does it work?</div>
                 <div style={s.howSteps}>
                   {[
-                    { icon: '📷', text: 'La caméra capture votre visage' },
-                    { icon: '🤖', text: "L'IA analyse et crée un descripteur unique de 128 points" },
-                    { icon: '🔒', text: 'Le descripteur est stocké chiffré dans la base de données' },
-                    { icon: '⚡', text: "À la connexion, votre visage est comparé en moins d'1 seconde" },
+                    { icon: '📷', text: 'The camera captures your face' },
+                    { icon: '🤖', text: 'AI analyzes and creates a unique 128-point descriptor' },
+                    { icon: '🔒', text: 'The descriptor is stored encrypted in the database' },
+                    { icon: '⚡', text: 'At login, your face is matched in under 1 second' },
                   ].map((step, i) => (
                     <div key={i} style={s.howStep}>
                       <span style={s.howStepIcon}>{step.icon}</span>
@@ -529,16 +529,16 @@ export default function ProfilePage() {
                   onClick={() => { setError(''); setSuccess(''); setShowFacePopup(true); }}
                   style={s.faceRegisterBtn}>
                   <span>📸</span>
-                  <span>{faceStatus === 'registered' ? 'Mettre à jour mon Face ID' : 'Enregistrer mon Face ID'}</span>
-                  <span style={s.aiBadge}>IA</span>
+                  <span>{faceStatus === 'registered' ? 'Update my Face ID' : 'Register my Face ID'}</span>
+                  <span style={s.aiBadge}>AI</span>
                 </button>
                 {faceStatus === 'registered' && (
                   <button onClick={handleDeleteFace} style={s.faceDeleteBtn}>
-                    🗑️ Supprimer Face ID
+                    🗑️ Remove Face ID
                   </button>
                 )}
               </div>
-              <p style={s.faceNote}>🔒 Le traitement est 100% local — aucune image n'est envoyée au serveur.</p>
+              <p style={s.faceNote}>🔒 100% local processing — no image is sent to the server.</p>
             </div>
           )}
         </div>
@@ -590,7 +590,7 @@ const s = {
   inputIcon: { marginRight: '8px', fontSize: '16px', flexShrink: 0 },
   input: { flex: 1, border: 'none', outline: 'none', padding: '12px 4px', backgroundColor: 'transparent', fontSize: '14px', width: '100%' },
   hint:    { fontSize: '11px', color: '#aaa', marginTop: '5px', fontStyle: 'italic' },
-  saveBtn: { padding: '13px 28px', borderRadius: '10px', border: 'none', backgroundColor: '#FACC15',
+  saveBtn: { padding: '13px 28px', borderRadius: '10px', border: 'none', backgroundColor: '#f28c28',
     color: '#000', fontWeight: '700', fontSize: '14px', cursor: 'pointer', transition: '0.2s', alignSelf: 'flex-start' },
   faceCard: { display: 'flex', gap: '16px', alignItems: 'flex-start', backgroundColor: '#f8faff',
     border: '1px solid #e0e8ff', borderRadius: '12px', padding: '20px', marginBottom: '4px' },

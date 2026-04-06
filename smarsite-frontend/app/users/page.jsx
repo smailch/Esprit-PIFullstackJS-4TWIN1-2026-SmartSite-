@@ -323,7 +323,7 @@ export default function UsersPage() {
                         width: '40px', height: '40px', borderRadius: '50%',
                         backgroundColor: avatarColor(user.fullName),
                         display: 'flex', justifyContent: 'center', alignItems: 'center',
-                        fontSize: '14px', fontWeight: '800', color: '#FACC15', flexShrink: 0,
+                        fontSize: '14px', fontWeight: '800', color: '#f28c28', flexShrink: 0,
                         overflow: 'hidden',
                       }}>
                         {user.profileImage
@@ -424,7 +424,7 @@ const s = {
   pageSubtitle:{ fontSize: '13px', color: '#888', marginTop: '2px' },
   createBtn: {
     display: 'flex', alignItems: 'center', gap: '8px',
-    backgroundColor: '#FACC15', color: '#000', border: 'none',
+    backgroundColor: '#f28c28', color: '#000', border: 'none',
     padding: '10px 20px', borderRadius: '10px', cursor: 'pointer',
     fontWeight: '700', fontSize: '14px', transition: '0.2s',
   },
@@ -471,7 +471,7 @@ const s = {
   modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' },
   modalLogo: {
     fontSize: '11px', fontWeight: '800', letterSpacing: '3px', color: '#132849',
-    textTransform: 'uppercase', borderLeft: '3px solid #FACC15', paddingLeft: '10px',
+    textTransform: 'uppercase', borderLeft: '3px solid #f28c28', paddingLeft: '10px',
   },
   closeBtn: {
     background: '#f4f4f5', border: 'none', borderRadius: '50%', width: '30px', height: '30px',
@@ -492,7 +492,7 @@ const s = {
   },
   errorText: { color: '#ef4444', fontSize: '11px', marginBottom: '6px', marginTop: '2px' },
   primaryBtn: {
-    flex: 1, backgroundColor: '#FACC15', color: '#000', border: 'none',
+    flex: 1, backgroundColor: '#f28c28', color: '#000', border: 'none',
     padding: '12px', borderRadius: '8px', cursor: 'pointer', fontWeight: '700', fontSize: '14px',
   },
   secondaryBtn: {

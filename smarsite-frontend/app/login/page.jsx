@@ -11,14 +11,14 @@ const MODELS_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
 //  COMPOSANT POPUP FACE ID
 // ══════════════════════════════════════════════════════════════════════════════
 const FaceIDPopup = ({ onClose, onSuccess }) => {
-  const videoRef    = useRef(null);
-  const canvasRef   = useRef(null);
-  const streamRef   = useRef(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
   const intervalRef = useRef(null);
 
-  const [status,    setStatus]    = useState('loading');
+  const [status, setStatus] = useState('loading');
   const [statusMsg, setStatusMsg] = useState('Chargement des modèles IA...');
-  const [progress,  setProgress]  = useState(0);
+  const [progress, setProgress] = useState(0);
 
   const stopCamera = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -61,7 +61,7 @@ const FaceIDPopup = ({ onClose, onSuccess }) => {
         await videoRef.current.play();
         setProgress(100);
         setStatus('scanning');
-        setStatusMsg('Positionnez votre visage dans le cadre');
+        setStatusMsg('Position your face in the frame');
 
         let hits = 0;
         let lastDescriptor = null;
@@ -85,19 +85,20 @@ const FaceIDPopup = ({ onClose, onSuccess }) => {
             lastDescriptor = Array.from(detection.descriptor);
             hits++;
             setStatus('detected');
-            setStatusMsg(`Visage détecté — vérification (${hits}/3)`);
+            setStatusMsg(`
+Face detected — verification (${hits}/3)`);
 
             if (hits >= 3) {
               clearInterval(intervalRef.current);
               setStatus('success');
-              setStatusMsg('Identité confirmée ✓');
+              setStatusMsg('Identity confirmed ✓');
               setTimeout(() => { stopCamera(); onSuccess(lastDescriptor); }, 1300);
             }
           } else {
             hits = 0;
             lastDescriptor = null;
             setStatus('scanning');
-            setStatusMsg('Positionnez votre visage dans le cadre');
+            setStatusMsg('Position your face in the frame');
           }
         }, 700);
 
@@ -105,7 +106,7 @@ const FaceIDPopup = ({ onClose, onSuccess }) => {
         if (cancelled) return;
         setStatus('error');
         setStatusMsg(err.name === 'NotAllowedError'
-          ? 'Accès caméra refusé. Autorisez la caméra dans votre navigateur.'
+          ? 'Camera access denied. Allow the camera in your browser..'
           : 'Erreur : ' + err.message);
       }
     };
@@ -115,13 +116,13 @@ const FaceIDPopup = ({ onClose, onSuccess }) => {
   }, [stopCamera, onSuccess]);
 
   const colors = {
-    loading: '#FACC15',
-    scanning: '#FACC15',
+    loading: '#f28c28',
+    scanning: '#f28c28',
     detected: '#22c55e',
-    success:  '#22c55e',
-    error:    '#ef4444',
+    success: '#22c55e',
+    error: '#ef4444',
   };
-  const c     = colors[status];
+  const c = colors[status];
   const pulse = (status === 'scanning' || status === 'detected')
     ? 'faceIdPulse 1.8s ease-in-out infinite' : 'none';
 
@@ -140,8 +141,10 @@ const FaceIDPopup = ({ onClose, onSuccess }) => {
           <div style={faceS.logo}>Smartsite</div>
           <button onClick={handleClose} style={faceS.closeBtn}>✕</button>
         </div>
-        <h3 style={faceS.title}>Connexion Face ID</h3>
-        <p style={faceS.subtitle}>Reconnaissance faciale par intelligence artificielle</p>
+        <h3 style={faceS.title}>Face ID login
+        </h3>
+        <p style={faceS.subtitle}>
+          Facial recognition using artificial intelligence</p>
 
         {/* Caméra */}
         <div style={{ ...faceS.frame, borderColor: c, animation: pulse }}>
@@ -159,52 +162,61 @@ const FaceIDPopup = ({ onClose, onSuccess }) => {
 
           {/* Coins décoratifs */}
           {[
-  { top:'10px',    left:'10px',  borderTop:`3px solid ${c}`,    borderLeft:`3px solid ${c}`,  borderRight:'none', borderBottom:'none', borderRadius:'6px 0 0 0' },
-  { top:'10px',    right:'10px', borderTop:`3px solid ${c}`,    borderRight:`3px solid ${c}`, borderLeft:'none',  borderBottom:'none', borderRadius:'0 6px 0 0' },
-  { bottom:'10px', left:'10px',  borderBottom:`3px solid ${c}`, borderLeft:`3px solid ${c}`,  borderRight:'none', borderTop:'none',    borderRadius:'0 0 0 6px' },
-  { bottom:'10px', right:'10px', borderBottom:`3px solid ${c}`, borderRight:`3px solid ${c}`, borderLeft:'none',  borderTop:'none',    borderRadius:'0 0 6px 0' },
-].map((corner, i) => (
-  <div key={i} style={{ position: 'absolute', width: '22px', height: '22px', ...corner }} />
-))}
+            { top: '10px', left: '10px', borderTop: `3px solid ${c}`, borderLeft: `3px solid ${c}`, borderRight: 'none', borderBottom: 'none', borderRadius: '6px 0 0 0' },
+            { top: '10px', right: '10px', borderTop: `3px solid ${c}`, borderRight: `3px solid ${c}`, borderLeft: 'none', borderBottom: 'none', borderRadius: '0 6px 0 0' },
+            { bottom: '10px', left: '10px', borderBottom: `3px solid ${c}`, borderLeft: `3px solid ${c}`, borderRight: 'none', borderTop: 'none', borderRadius: '0 0 0 6px' },
+            { bottom: '10px', right: '10px', borderBottom: `3px solid ${c}`, borderRight: `3px solid ${c}`, borderLeft: 'none', borderTop: 'none', borderRadius: '0 0 6px 0' },
+          ].map((corner, i) => (
+            <div key={i} style={{ position: 'absolute', width: '22px', height: '22px', ...corner }} />
+          ))}
 
           {/* Succès */}
           {status === 'success' && (
-            <div style={{ position:'absolute', inset:0, backgroundColor:'rgba(34,197,94,0.18)',
-              display:'flex', justifyContent:'center', alignItems:'center' }}>
-              <span style={{ fontSize:'64px', color:'#22c55e', fontWeight:'900' }}>✓</span>
+            <div style={{
+              position: 'absolute', inset: 0, backgroundColor: 'rgba(34,197,94,0.18)',
+              display: 'flex', justifyContent: 'center', alignItems: 'center'
+            }}>
+              <span style={{ fontSize: '64px', color: '#22c55e', fontWeight: '900' }}>✓</span>
             </div>
           )}
 
           {/* Chargement / Erreur */}
           {(status === 'loading' || status === 'error') && (
-            <div style={{ position:'absolute', inset:0, backgroundColor:'rgba(0,0,0,0.65)',
-              display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center', gap:'16px' }}>
+            <div style={{
+              position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.65)',
+              display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '16px'
+            }}>
               {status === 'loading' ? (
                 <>
-                  <div style={{ width:'40px', height:'40px', border:'3px solid rgba(250,204,21,0.3)',
-                    borderTopColor:'#FACC15', borderRadius:'50%', animation:'faceIdSpin 0.9s linear infinite' }} />
-                  <div style={{ width:'160px', height:'4px', backgroundColor:'rgba(255,255,255,0.15)', borderRadius:'2px' }}>
-                    <div style={{ height:'100%', width:`${progress}%`, backgroundColor:'#FACC15',
-                      borderRadius:'2px', transition:'width 0.5s ease' }} />
+                  <div style={{
+                    width: '40px', height: '40px', border: '3px solid rgba(250,204,21,0.3)',
+                    borderTopColor: '#FACC15', borderRadius: '50%', animation: 'faceIdSpin 0.9s linear infinite'
+                  }} />
+                  <div style={{ width: '160px', height: '4px', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '2px' }}>
+                    <div style={{
+                      height: '100%', width: `${progress}%`, backgroundColor: '#FACC15',
+                      borderRadius: '2px', transition: 'width 0.5s ease'
+                    }} />
                   </div>
                 </>
-              ) : <span style={{ fontSize:'44px' }}>⚠️</span>}
+              ) : <span style={{ fontSize: '44px' }}>⚠️</span>}
             </div>
           )}
         </div>
 
         {/* Badge statut */}
         <div style={{
-          borderRadius:'10px', padding:'10px 16px', fontSize:'13px', fontWeight:'600',
-          textAlign:'center', marginBottom:'14px', transition:'all 0.3s',
-          backgroundColor: c + '18', border:`1px solid ${c}44`, color: c,
+          borderRadius: '10px', padding: '10px 16px', fontSize: '13px', fontWeight: '600',
+          textAlign: 'center', marginBottom: '14px', transition: 'all 0.3s',
+          backgroundColor: c + '18', border: `1px solid ${c}44`, color: c,
         }}>
           {status === 'success' ? '✓ ' : status === 'error' ? '✗ ' : status === 'detected' ? '👤 ' : '🔍 '}
           {statusMsg}
         </div>
 
-        <p style={{ fontSize:'11px', color:'#bbb', textAlign:'center', margin:0 }}>
-          🔒 Traitement 100% local — aucune image envoyée au serveur
+        <p style={{ fontSize: '11px', color: '#bbb', textAlign: 'center', margin: 0 }}>
+          🔒
+          100% local processing — no images sent to the server
         </p>
       </div>
     </div>
@@ -221,18 +233,24 @@ const faceS = {
     background: 'white', borderRadius: '20px', padding: '32px', width: '430px',
     boxShadow: '0 30px 70px rgba(0,0,0,0.4)', animation: 'faceIdIn 0.3s ease',
   },
-  header:   { display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'14px' },
-  logo:     { fontSize:'11px', fontWeight:'800', letterSpacing:'3px', color:'#132849',
-    textTransform:'uppercase', borderLeft:'3px solid #FACC15', paddingLeft:'10px' },
-  closeBtn: { background:'#f4f4f5', border:'none', borderRadius:'50%', width:'30px',
-    height:'30px', cursor:'pointer', fontSize:'13px', color:'#555', fontWeight:'700' },
-  title:    { fontSize:'20px', fontWeight:'700', color:'#1a1a2e', margin:'0 0 4px' },
-  subtitle: { fontSize:'13px', color:'#888', margin:'0 0 18px' },
-  frame:    { position:'relative', width:'100%', height:'270px', borderRadius:'14px',
-    overflow:'hidden', border:'2px solid', backgroundColor:'#080808',
-    transition:'border-color 0.4s, box-shadow 0.4s', marginBottom:'16px' },
-  video:    { width:'100%', height:'100%', objectFit:'cover', transform:'scaleX(-1)' },
-  canvas:   { position:'absolute', inset:0, width:'100%', height:'100%', transform:'scaleX(-1)' },
+  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' },
+  logo: {
+    fontSize: '11px', fontWeight: '800', letterSpacing: '3px', color: '#132849',
+    textTransform: 'uppercase', borderLeft: '3px solid #FACC15', paddingLeft: '10px'
+  },
+  closeBtn: {
+    background: '#f4f4f5', border: 'none', borderRadius: '50%', width: '30px',
+    height: '30px', cursor: 'pointer', fontSize: '13px', color: '#555', fontWeight: '700'
+  },
+  title: { fontSize: '20px', fontWeight: '700', color: '#1a1a2e', margin: '0 0 4px' },
+  subtitle: { fontSize: '13px', color: '#888', margin: '0 0 18px' },
+  frame: {
+    position: 'relative', width: '100%', height: '270px', borderRadius: '14px',
+    overflow: 'hidden', border: '2px solid', backgroundColor: '#080808',
+    transition: 'border-color 0.4s, box-shadow 0.4s', marginBottom: '16px'
+  },
+  video: { width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' },
+  canvas: { position: 'absolute', inset: 0, width: '100%', height: '100%', transform: 'scaleX(-1)' },
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -246,18 +264,18 @@ const Login = () => {
   const searchParams = useSearchParams();
   const successMessage = searchParams.get('successMessage');
 
-  const [email,        setEmail]        = useState('');
-  const [password,     setPassword]     = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error,        setError]        = useState('');
-  const [message,      setMessage]      = useState('');
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
 
   // Forgot password
-  const [showPopup,  setShowPopup]  = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
 
   // Face ID
-  const [showFaceID,  setShowFaceID]  = useState(false);
+  const [showFaceID, setShowFaceID] = useState(false);
   const [faceLoading, setFaceLoading] = useState(false);
 
   // ── Forgot password ───────────────────────────────────────────
@@ -265,10 +283,10 @@ const Login = () => {
     if (!/\S+@\S+\.\S+/.test(resetEmail)) { setError('Email invalide'); return; }
     try {
       await axios.post('http://localhost:3200/users/forgot-password', { email: resetEmail });
-      setMessage(`Veuillez consulter votre boîte mail (${resetEmail}) pour changer votre mot de passe.`);
+      setMessage(`Please check your email inbox (${resetEmail}) to change your password.`);
       setError('');
     } catch {
-      setError("Ce mail n'est pas valide"); setMessage('');
+      setError("This email address is not valid."); setMessage('');
     }
   };
 
@@ -281,7 +299,7 @@ const Login = () => {
       // ✅ Next.js : router.push remplace navigate()
       router.push('/');
     } catch {
-      setError('Email ou mot de passe invalide');
+      setError('Invalid email or password');
     }
   };
 
@@ -298,7 +316,7 @@ const Login = () => {
       // ✅ Next.js : router.push remplace navigate()
       router.push('/');
     } catch (err) {
-      setError('Visage non reconnu.');
+      setError('Unrecognized face.');
     } finally {
       setFaceLoading(false);
     }
@@ -316,11 +334,12 @@ const Login = () => {
         {/* ── SECTION GAUCHE : FORMULAIRE ── */}
         <div style={styles.leftSection}>
           <div style={styles.logo}>Smartsite</div>
-          <h2 style={styles.title}>Se connecter</h2>
-          <p style={styles.subtitle}>Connectez-vous à votre espace chantier</p>
+          <h2 style={styles.title}>Login</h2>
+          <p style={styles.subtitle}>
+            Log in to your construction site space</p>
 
           {successMessage && <div style={styles.successBox}>{successMessage}</div>}
-          {error          && <div style={styles.errorBox}>{error}</div>}
+          {error && <div style={styles.errorBox}>{error}</div>}
 
           <form onSubmit={handleSubmit}>
             <label style={styles.label}>Email</label>
@@ -336,7 +355,7 @@ const Login = () => {
               />
             </div>
 
-            <label style={styles.label}>Mot de passe</label>
+            <label style={styles.label}>Password</label>
             <div style={styles.inputGroup}>
               <span style={styles.icon}>🔒</span>
               <input
@@ -358,7 +377,8 @@ const Login = () => {
                 onClick={() => { setShowPopup(true); setError(''); setMessage(''); }}
                 style={styles.forgotPass}
               >
-                Mot de passe oublié ?
+
+                Forgot your password?
               </p>
             </div>
           </form>
@@ -366,7 +386,7 @@ const Login = () => {
           {/* Séparateur */}
           <div style={styles.divider}>
             <div style={styles.divLine} />
-            <span style={styles.divText}>ou</span>
+            <span style={styles.divText}>or</span>
             <div style={styles.divLine} />
           </div>
 
@@ -381,36 +401,34 @@ const Login = () => {
             ) : (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M2 8V6a2 2 0 0 1 2-2h2"/>
-                <path d="M2 16v2a2 2 0 0 0 2 2h2"/>
-                <path d="M22 8V6a2 2 0 0 0-2-2h-2"/>
-                <path d="M22 16v2a2 2 0 0 1-2 2h-2"/>
-                <circle cx="9"  cy="10" r="1.2" fill="currentColor" stroke="none"/>
-                <circle cx="15" cy="10" r="1.2" fill="currentColor" stroke="none"/>
-                <path d="M8.5 15s1 1.5 3.5 1.5 3.5-1.5 3.5-1.5"/>
-                <path d="M9 6.5C9 6.5 10.2 6 12 6s3 .5 3 .5"/>
+                <path d="M2 8V6a2 2 0 0 1 2-2h2" />
+                <path d="M2 16v2a2 2 0 0 0 2 2h2" />
+                <path d="M22 8V6a2 2 0 0 0-2-2h-2" />
+                <path d="M22 16v2a2 2 0 0 1-2 2h-2" />
+                <circle cx="9" cy="10" r="1.2" fill="currentColor" stroke="none" />
+                <circle cx="15" cy="10" r="1.2" fill="currentColor" stroke="none" />
+                <path d="M8.5 15s1 1.5 3.5 1.5 3.5-1.5 3.5-1.5" />
+                <path d="M9 6.5C9 6.5 10.2 6 12 6s3 .5 3 .5" />
               </svg>
             )}
-            <span>{faceLoading ? 'Vérification en cours...' : 'Se connecter avec Face ID'}</span>
+            <span>{faceLoading ? 'Verification in progress...' : 'Sign in with Face ID'}</span>
             <span style={styles.aiBadge}>IA</span>
           </button>
 
-          <p style={styles.faceHint}>
-            💡 Entrez d'abord votre email, puis cliquez sur Face ID
-          </p>
+
         </div>
 
         {/* ── SECTION DROITE : PANNEAU DÉCORATIF ── */}
         <div style={styles.rightSection}>
           <div style={styles.overlay}>
-            <h2 style={styles.rightTitle}>S'inscrire</h2>
             <p style={styles.rightText}>
-              SmartSite centralise vos données de chantier et automatise
-              le suivi d'avancement grâce à l'IA — détection visuelle,
-              prédiction de retards et contrôle budgétaire en temps réel.
+              SmartSite centralizes your construction site data and automates
+              progress tracking using AI — visual detection,
+
+              delay prediction and real-time budget control.
             </p>
             {/* ✅ Next.js : router.push remplace navigate() */}
-            
+
           </div>
         </div>
       </div>
@@ -420,26 +438,26 @@ const Login = () => {
         <div style={popupStyles.overlay}>
           <div style={popupStyles.popup}>
             <div style={popupStyles.logo}>Smartsite</div>
-            <h3 style={popupStyles.title}>Mot de passe oublié</h3>
-            <p style={popupStyles.subtitle}>Entrez votre email pour recevoir un lien de réinitialisation.</p>
+            <h3 style={popupStyles.title}>Forgot your password?</h3>
+            <p style={popupStyles.subtitle}>Enter your email to receive a reset link.</p>
 
             <div style={popupStyles.inputGroup}>
               <span style={styles.icon}>📧</span>
               <input
                 type="email"
-                placeholder="Entrer votre email"
+                placeholder="Email"
                 value={resetEmail}
                 onChange={(e) => setResetEmail(e.target.value)}
                 style={styles.input}
               />
             </div>
 
-            {error   && <p style={styles.errorText}>{error}</p>}
+            {error && <p style={styles.errorText}>{error}</p>}
             {message && <p style={styles.successText}>{message}</p>}
 
             <div style={styles.buttonContainer}>
-              <button onClick={handleForgotPassword} style={styles.primaryButton}>Envoyer mail</button>
-              <button onClick={() => setShowPopup(false)} style={styles.secondaryButton}>Fermer</button>
+              <button onClick={handleForgotPassword} style={styles.primaryButton}>Send mail</button>
+              <button onClick={() => setShowPopup(false)} style={styles.secondaryButton}>Close</button>
             </div>
           </div>
         </div>
@@ -474,7 +492,7 @@ const popupStyles = {
     textTransform: 'uppercase', marginBottom: '16px',
     borderLeft: '3px solid #FACC15', paddingLeft: '10px',
   },
-  title:    { fontSize: '22px', fontWeight: '700', color: '#1a1a2e', margin: '0 0 6px' },
+  title: { fontSize: '22px', fontWeight: '700', color: '#1a1a2e', margin: '0 0 6px' },
   subtitle: { color: '#888', fontSize: '13px', marginBottom: '20px' },
   inputGroup: {
     display: 'flex', alignItems: 'center', border: '1px solid #e0e0e0',
@@ -488,10 +506,12 @@ const styles = {
     backgroundColor: '#132849', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
     position: 'relative', overflow: 'hidden',
   },
-  deco1: { position:'absolute', top:'8%',  left:'5%',  fontSize:'80px',  opacity:0.07, color:'white', userSelect:'none' },
-  deco2: { position:'absolute', bottom:'10%', right:'4%', fontSize:'100px', opacity:0.07, color:'white', userSelect:'none' },
-  deco3: { position:'absolute', top:'50%', left:'50%', fontSize:'200px', opacity:0.03, color:'white',
-    transform:'translate(-50%,-50%)', userSelect:'none' },
+  deco1: { position: 'absolute', top: '8%', left: '5%', fontSize: '80px', opacity: 0.07, color: 'white', userSelect: 'none' },
+  deco2: { position: 'absolute', bottom: '10%', right: '4%', fontSize: '100px', opacity: 0.07, color: 'white', userSelect: 'none' },
+  deco3: {
+    position: 'absolute', top: '50%', left: '50%', fontSize: '200px', opacity: 0.03, color: 'white',
+    transform: 'translate(-50%,-50%)', userSelect: 'none'
+  },
   card: {
     display: 'flex', width: '900px', minHeight: '580px', backgroundColor: 'white',
     borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.3)', zIndex: 1,
@@ -503,14 +523,14 @@ const styles = {
     fontSize: '12px', fontWeight: '800', letterSpacing: '3px', color: '#132849',
     textTransform: 'uppercase', marginBottom: '22px', borderLeft: '3px solid #FACC15', paddingLeft: '10px',
   },
-  title:    { fontSize: '26px', fontWeight: '700', color: '#1a1a2e', marginBottom: '4px' },
+  title: { fontSize: '26px', fontWeight: '700', color: '#1a1a2e', marginBottom: '4px' },
   subtitle: { color: '#888', marginBottom: '20px', fontSize: '13px' },
-  label:    { fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '6px', display: 'block' },
+  label: { fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '6px', display: 'block' },
   inputGroup: {
     display: 'flex', alignItems: 'center', border: '1px solid #e0e0e0',
     borderRadius: '8px', marginBottom: '14px', padding: '0 12px', backgroundColor: '#fcfcfc',
   },
-  icon:   { marginRight: '8px', fontSize: '16px' },
+  icon: { marginRight: '8px', fontSize: '16px' },
   eyeBtn: { cursor: 'pointer', fontSize: '16px', padding: '4px', userSelect: 'none' },
   input: {
     flex: 1, border: 'none', outline: 'none', padding: '12px 4px',
@@ -553,23 +573,27 @@ const styles = {
     display: 'flex', flexDirection: 'column', justifyContent: 'center',
     alignItems: 'center', padding: '40px', color: 'white', textAlign: 'center',
   },
-  rightTitle:     { fontSize: '28px', fontWeight: '700', marginBottom: '18px' },
-  rightText:      { fontSize: '14px', marginBottom: '28px', lineHeight: '1.7', opacity: 0.88 },
+  rightTitle: { fontSize: '28px', fontWeight: '700', marginBottom: '18px' },
+  rightText: { fontSize: '18px', marginBottom: '28px', lineHeight: '1.7', opacity: 0.88 },
   registerButton: {
     backgroundColor: 'transparent', color: 'white', border: '2px solid white',
     padding: '10px 30px', borderRadius: '25px', cursor: 'pointer', fontSize: '15px', fontWeight: '600',
   },
 
-  successBox:  { backgroundColor:'#f0fdf4', border:'1px solid #86efac', color:'#16a34a',
-    borderRadius:'8px', padding:'10px 14px', fontSize:'13px', marginBottom:'14px' },
-  errorBox:    { backgroundColor:'#fef2f2', border:'1px solid #fca5a5', color:'#dc2626',
-    borderRadius:'8px', padding:'10px 14px', fontSize:'13px', marginBottom:'14px' },
-  errorText:   { color: '#ef4444', fontSize: '13px', marginTop: '8px' },
+  successBox: {
+    backgroundColor: '#f0fdf4', border: '1px solid #86efac', color: '#16a34a',
+    borderRadius: '8px', padding: '10px 14px', fontSize: '13px', marginBottom: '14px'
+  },
+  errorBox: {
+    backgroundColor: '#fef2f2', border: '1px solid #fca5a5', color: '#dc2626',
+    borderRadius: '8px', padding: '10px 14px', fontSize: '13px', marginBottom: '14px'
+  },
+  errorText: { color: '#ef4444', fontSize: '13px', marginTop: '8px' },
   successText: { color: '#10b981', fontSize: '13px', marginTop: '8px' },
 
   buttonContainer: { display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '20px' },
   primaryButton: {
-    backgroundColor: '#FACC15', color: '#000', border: 'none', padding: '12px 20px',
+    backgroundColor: '#f28c28', color: '#000', border: 'none', padding: '12px 20px',
     borderRadius: '8px', cursor: 'pointer', fontWeight: '700', fontSize: '14px', flex: 1,
   },
   secondaryButton: {
