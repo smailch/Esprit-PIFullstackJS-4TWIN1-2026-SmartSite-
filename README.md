@@ -5,7 +5,7 @@
 </p>
 
 <h3 align="center">🏗️ Construction & maintenance · Projets, tâches, équipe et budget</h3>
-<h3 align="center">⚡ Frontend React (Next.js) · NestJS · MongoDB · PI Full Stack JS (ESPRIT)</h3>
+<h3 align="center">⚡ Frontend React js  · NestJS · MongoDB · PI Full Stack JS (ESPRIT)</h3>
 
 <p align="center">
   📚 <strong>Projet académique</strong> · Encadrante : <strong>Sassi Soumaya</strong>
