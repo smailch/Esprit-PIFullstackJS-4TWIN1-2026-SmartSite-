@@ -30,11 +30,12 @@
   },
   "include": [
     "next-env.d.ts",
+    "declarations.d.ts",  
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
-  ],
+, "app/profile/page.jsx"  ],
   "exclude": [
     "node_modules"
   ]

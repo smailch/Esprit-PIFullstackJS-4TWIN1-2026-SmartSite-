@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { MongooseModule } from '@nestjs/mongoose';
 import { validateGroqEnv } from './analysis-ai/groq-env.validation';
 import { JobsModule } from './jobs/jobs.module';
 import { ResourcesModule } from './resources/resources.module';
@@ -10,6 +9,9 @@ import { UsersModule } from './users/users.module';
 import { HumanResourcesModule } from './human-resources/human-resources.module';
 import { EquipmentResourcesModule } from './equipment-resources/equipment-resources.module';
 import { AnalysisAiModule } from './analysis-ai/analysis-ai.module';
+import { RolesModule } from './roles/roles.module';
+import { AuthModule } from './auth/auth.module';
+import { MongooseModule } from '@nestjs/mongoose';
 
 @Module({
   imports: [
@@ -18,15 +20,15 @@ import { AnalysisAiModule } from './analysis-ai/analysis-ai.module';
       envFilePath: '.env.example',
       validate: validateGroqEnv,
     }),
-    // Connexion MongoDB Atlas
-    MongooseModule.forRoot(
-      'mongodb+srv://mourad:mourad@smartsite.poyscqk.mongodb.net/smartsite?retryWrites=true&w=majority'
+    MongooseModule.forRoot('mongodb://localhost:27017/smartsiteloc'
     ),
     JobsModule,
     ResourcesModule,
     ProjectsModule, // Ajout du module Projects
     TasksModule, // Ajout du module Tasks
     UsersModule,
+    RolesModule,
+    AuthModule,
     HumanResourcesModule,
     EquipmentResourcesModule,
     AnalysisAiModule,

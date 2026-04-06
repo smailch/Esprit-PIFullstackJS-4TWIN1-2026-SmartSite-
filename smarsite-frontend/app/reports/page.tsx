@@ -26,14 +26,14 @@ export default function ReportsPage() {
       >
         <button className="px-4 py-2 rounded-lg bg-primary text-white font-medium hover:bg-primary/90 transition-colors flex items-center gap-2">
           <Download size={18} />
-          Export Report
+          Export Repor    t
         </button>
       </PageHeader>
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white rounded-xl border border-border shadow-sm p-6">
-          <p className="text-sm text-muted-foreground font-medium">Total Budget</p>
+          <p className="text-sm text-muted-foreground font-medium">Total Baaaaaaaaaaaaaaa</p>
           <p className="text-3xl font-bold text-foreground mt-2">${(totalBudget / 1000000).toFixed(1)}M</p>
         </div>
         <div className="bg-white rounded-xl border border-border shadow-sm p-6">
