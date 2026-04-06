@@ -17,7 +17,7 @@ export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
-    @InjectModel('Role') private roleModel: Model<any>,
+    @InjectModel('Role') private roleModel: Model<any>, // ✅ injection du modèle Role
   ) {}
 
   // ── Login classique email + mot de passe ──────────────────────
@@ -44,72 +44,50 @@ export class AuthService {
     return newUser.save();
   }
 
-  // ── Face Login ────────────────────────────────────────────────
-  //async faceLogin(email: string, incomingDescriptor: number[]) {
-    // 1. Trouver l'utilisateur par email
-   // const user = await this.usersService.findByEmail(email);
-   // if (!user)
-    //  throw new NotFoundException('Utilisateur non trouvé');
-
-    // 2. Vérifier qu'un descripteur facial est enregistré
-   // if (!user.faceDescriptor || user.faceDescriptor.length === 0)
-    //  throw new BadRequestException('Aucun visage enregistré pour ce compte');
-
-    // 3. Comparer les descripteurs (distance euclidienne)
-   // const distance = euclideanDistance(
-    //  Array.from(user.faceDescriptor),
-    //  incomingDescriptor,
-    //);
-
-    // 4. Seuil 0.6 = standard face-api.js
-   // if (distance > 0.6)
-    //  throw new UnauthorizedException('Visage non reconnu');
-
-    // 5. Générer le JWT
-   // return this.generateToken(user);
-  //}
-
-
+  // ── Face Login Auto ───────────────────────────────────────────
   async faceLoginAuto(incomingDescriptor: number[]) {
-  const users = await this.usersService.getAllUsersWithFace();
+    const users = await this.usersService.getAllUsersWithFace();
 
-  if (!users || users.length === 0) {
-    throw new NotFoundException('Aucun utilisateur avec Face ID');
-  }
-
-let bestMatch: UserDocument | null = null;  let bestDistance = Infinity;
-
-  for (const user of users) {
-    if (!user.faceDescriptor || user.faceDescriptor.length === 0) continue;
-
-    const distance = euclideanDistance(
-      Array.from(user.faceDescriptor),
-      incomingDescriptor
-    );
-
-    if (distance < bestDistance) {
-      bestDistance = distance;
-      bestMatch = user;
+    if (!users || users.length === 0) {
+      throw new NotFoundException('Aucun utilisateur avec Face ID');
     }
+
+    let bestMatch: UserDocument | null = null;
+    let bestDistance = Infinity;
+
+    for (const user of users) {
+      if (!user.faceDescriptor || user.faceDescriptor.length === 0) continue;
+
+      const distance = euclideanDistance(
+        Array.from(user.faceDescriptor),
+        incomingDescriptor
+      );
+
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestMatch = user;
+      }
+    }
+
+    // seuil standard face-api.js
+    if (!bestMatch || bestDistance > 0.6) {
+      throw new UnauthorizedException('Visage non reconnu');
+    }
+
+    return this.generateToken(bestMatch);
   }
 
-  // seuil standard face-api.js
-  if (!bestMatch || bestDistance > 0.6) {
-    throw new UnauthorizedException('Visage non reconnu');
-  }
-
-  return this.generateToken(bestMatch);
-}
   // ── Méthode privée partagée : génère le JWT ───────────────────
   private async generateToken(user: any) {
-        const role = await this.roleModel.findById(user.roleId);
+    // ✅ Récupérer le nom du rôle depuis la base
+    const role = await this.roleModel.findById(user.roleId);
 
     const payload = {
       sub:      user._id,
       email:    user.email,
       fullName: user.fullName,
       roleId:   user.roleId,
-      roleName: role?.name || '',
+      roleName: role?.name || '', // ✅ nom du rôle dans le token
     };
     return {
       access_token: this.jwtService.sign(payload),

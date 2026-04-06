@@ -5,12 +5,14 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { UsersModule } from '../users/users.module';
 import { JwtStrategy } from './jwt.strategy';
+import { RolesModule } from '../roles/roles.module';
 
 @Module({
   imports: [
     // ✅ Utilisation de forwardRef pour éviter les erreurs de dépendance circulaire
     forwardRef(() => UsersModule), 
     PassportModule,
+    RolesModule,
     JwtModule.register({
       secret: 'SMARTSITE_SECRET_KEY',
       signOptions: { expiresIn: '1d' },

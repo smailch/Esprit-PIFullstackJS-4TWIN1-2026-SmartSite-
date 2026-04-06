@@ -410,9 +410,7 @@ const Login = () => {
               prédiction de retards et contrôle budgétaire en temps réel.
             </p>
             {/* ✅ Next.js : router.push remplace navigate() */}
-            <button onClick={() => router.push('/register')} style={styles.registerButton}>
-              Inscrivez-vous !
-            </button>
+            
           </div>
         </div>
       </div>

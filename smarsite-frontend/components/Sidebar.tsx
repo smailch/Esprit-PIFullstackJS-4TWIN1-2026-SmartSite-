@@ -1,37 +1,51 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  Building2,
-  BarChart3,
-  Users,
-  Wallet,
-  AlertCircle,
-  FileText,
-  Menu,
-  X,
-  Home,
-  Clipboard,
-  Briefcase,
+  Building2, BarChart3, Users, Wallet, AlertCircle,
+  FileText, Menu, X, Home, Clipboard, Briefcase, UserPlus,
 } from 'lucide-react';
 
 const navigationItems = [
-  { id: 'dashboard', label: 'aaashboard', icon: Home, href: '/' },
-  { id: 'projects', label: 'Projects', icon: Building2, href: '/projects' },
-  { id: 'jobs', label: 'Jobs', icon: Briefcase, href: '/jobs' },
-  { id: 'tasks', label: 'Tasks', icon: Clipboard, href: '/tasks' },
-  { id: 'reports', label: 'Reports', icon: BarChart3, href: '/reports' },
-  { id: 'team', label: 'Team', icon: Users, href: '/team' },
-  { id: 'budget', label: 'Budget', icon: Wallet, href: '/budget' },
-  { id: 'alerts', label: 'Alerts', icon: AlertCircle, href: '/alerts' },
-  { id: 'documents', label: 'Documents', icon: FileText, href: '/documents' },
+  { id: 'dashboard', label: 'Dashboard',  icon: Home,         href: '/' },
+  { id: 'projects',  label: 'Projects',   icon: Building2,    href: '/projects' },
+  { id: 'jobs',      label: 'Jobs',       icon: Briefcase,    href: '/jobs' },
+  { id: 'tasks',     label: 'Tasks',      icon: Clipboard,    href: '/tasks' },
+  { id: 'reports',   label: 'Reports',    icon: BarChart3,    href: '/reports' },
+  { id: 'team',      label: 'Team',       icon: Users,        href: '/team' },
+  { id: 'budget',    label: 'Budget',     icon: Wallet,       href: '/budget' },
+  { id: 'alerts',    label: 'Alerts',     icon: AlertCircle,  href: '/alerts' },
+  { id: 'documents', label: 'Documents',  icon: FileText,     href: '/documents' },
 ];
+
+// Item visible seulement pour Admin
+const adminItem = {
+  id: 'users', label: 'Users', icon: UserPlus, href: '/users',
+};
 
 export default function Sidebar() {
   const [open, setOpen] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const pathname = usePathname();
+
+  // ✅ Récupérer le rôle depuis le token JWT
+  useEffect(() => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      // Vérifie si le rôle est Admin (adapte selon ton payload JWT)
+      if (payload.role === 'Admin' || payload.roleName === 'Admin') {
+        setIsAdmin(true);
+      }
+    } catch {}
+  }, []);
+
+  const allItems = isAdmin
+    ? [...navigationItems, adminItem]
+    : navigationItems;
 
   return (
     <>
@@ -60,9 +74,10 @@ export default function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-          {navigationItems.map((item) => {
+          {allItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+
             return (
               <Link
                 key={item.id}
@@ -76,6 +91,16 @@ export default function Sidebar() {
               >
                 <Icon size={20} />
                 <span className="text-sm">{item.label}</span>
+                {/* Badge Admin */}
+                {item.id === 'users' && (
+                  <span style={{
+                    marginLeft: 'auto', fontSize: '9px', fontWeight: '800',
+                    backgroundColor: '#FACC15', color: '#132849',
+                    padding: '2px 6px', borderRadius: '20px', letterSpacing: '0.5px',
+                  }}>
+                    ADMIN
+                  </span>
+                )}
               </Link>
             );
           })}
