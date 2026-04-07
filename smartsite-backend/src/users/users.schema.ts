@@ -34,6 +34,9 @@ export class User {
 
   @Prop({ type: [Number], default: null })
   faceDescriptor!: number[];
+  
+  @Prop({ type: String, default: null })
+  profileImage!: string | null;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
