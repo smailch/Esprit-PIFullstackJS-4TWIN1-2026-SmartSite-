@@ -13,6 +13,7 @@ import { RolesModule } from './roles/roles.module';
 import { AuthModule } from './auth/auth.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuditLogModule } from './audit-logs/audit-log.module';
+import { MessagingModule } from './messaging/messaging.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { AuditLogModule } from './audit-logs/audit-log.module';
     HumanResourcesModule,
     EquipmentResourcesModule,
     AnalysisAiModule,
+    MessagingModule,
   ],
   controllers: [],
   providers: [],

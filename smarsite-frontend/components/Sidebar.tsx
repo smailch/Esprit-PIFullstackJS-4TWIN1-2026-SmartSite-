@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Building2, BarChart3, Users, Wallet, AlertCircle,
-  FileText, Menu, X, Home, Clipboard, Briefcase, UserPlus, ShieldAlert,
+  FileText, Menu, X, Home, Clipboard, Briefcase, UserPlus, ShieldAlert,MessageCircle,
 } from 'lucide-react';
 
 const navigationItems = [
@@ -22,8 +22,9 @@ const navigationItems = [
 
 // Item visible seulement pour Admin
 const adminItems = [
-  { id: 'users',         label: 'Users',           icon: UserPlus,    href: '/users' },
-  { id: 'admin-alerts',  label: 'Security Alerts', icon: ShieldAlert, href: '/alerts-log' }, // ← id différent
+  { id: 'users', label: 'Users', icon: UserPlus, href: '/users' },
+  { id: 'admin-alerts', label: 'Security Alerts', icon: ShieldAlert, href: '/alerts-log' },
+  { id: 'client-questions', label: 'Client Questions',  icon: MessageCircle, href: '/client-questions' },
 ];
 
 export default function Sidebar() {
