@@ -17,26 +17,42 @@ export default function Topbar() {
   const router = useRouter();
 
   // ✅ Récupérer le user depuis le token JWT
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      router.push('/login');
-      return;
-    }
-    try {
-      // Décoder le payload JWT (base64)
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      setUser({
-        fullName: payload.fullName || payload.name || payload.username,
-        email: payload.email,
-        profileImage: payload.profileImage,
-      });
-    } catch {
-      // Token invalide → rediriger vers login
-      localStorage.removeItem('token');
-      router.push('/login');
-    }
-  }, []);
+useEffect(() => {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    router.push('/login');
+    return;
+  }
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+
+    // Fallback immédiat depuis le token
+    setUser({
+      fullName: payload.fullName || payload.name || payload.username,
+      email: payload.email,
+      profileImage: payload.profileImage,
+    });
+
+
+    // ✅ Appel API pour récupérer la vraie profileImage
+    fetch(`http://localhost:3200/users/${payload.sub}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(res => res.json())
+      .then(data => {
+        setUser({
+          fullName: data.fullName,
+          email: data.email,
+          profileImage: data.profileImage, // ✅ image depuis MongoDB
+        });
+      })
+      .catch(() => {}); // garde le fallback token si API échoue
+
+  } catch {
+    localStorage.removeItem('token');
+    router.push('/login');
+  }
+}, []);
 
   // ✅ Fermer dropdown si clic dehors
   useEffect(() => {
