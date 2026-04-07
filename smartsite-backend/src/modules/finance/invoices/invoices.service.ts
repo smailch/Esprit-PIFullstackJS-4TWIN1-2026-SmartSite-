@@ -21,9 +21,23 @@ export class InvoicesService {
     return invoice.save();
   }
 
-  async findAll() {
-    return this.invoiceModel.find({ isArchived: false });
+async findAll() {
+  const invoices = await this.invoiceModel.find();
+
+  const now = new Date();
+
+  for (const invoice of invoices) {
+    if (
+      invoice.status !== 'PAID' &&
+      new Date(invoice.dueDate) < now
+    ) {
+      invoice.status = 'OVERDUE';
+      await invoice.save(); // optional but recommended
+    }
   }
+
+  return invoices;
+}
 
   async findOne(id: string) {
     const invoice = await this.invoiceModel.findById(id);

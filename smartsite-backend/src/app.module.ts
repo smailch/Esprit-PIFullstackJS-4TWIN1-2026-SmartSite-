@@ -19,8 +19,9 @@ import { InvoicesModule } from './modules/finance/invoices/invoices.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env.example',
+      envFilePath: ['.env', '.env.example'],
       validate: validateGroqEnv,
+      ignoreEnvFile: false,    
     }),
     // Connexion MongoDB Atlas
     MongooseModule.forRoot(
