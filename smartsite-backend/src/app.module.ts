@@ -12,6 +12,7 @@ import { AnalysisAiModule } from './analysis-ai/analysis-ai.module';
 import { RolesModule } from './roles/roles.module';
 import { AuthModule } from './auth/auth.module';
 import { MongooseModule } from '@nestjs/mongoose';
+import { AuditLogModule } from './audit-logs/audit-log.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { MongooseModule } from '@nestjs/mongoose';
     MongooseModule.forRoot('mongodb://localhost:27017/smartsiteloc'
     ),
     JobsModule,
+    AuditLogModule,
     ResourcesModule,
     ProjectsModule, // Ajout du module Projects
     TasksModule, // Ajout du module Tasks

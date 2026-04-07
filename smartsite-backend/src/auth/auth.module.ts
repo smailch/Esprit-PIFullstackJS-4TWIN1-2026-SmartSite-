@@ -6,6 +6,7 @@ import { AuthController } from './auth.controller';
 import { UsersModule } from '../users/users.module';
 import { JwtStrategy } from './jwt.strategy';
 import { RolesModule } from '../roles/roles.module';
+import { AuditLogModule } from '../audit-logs/audit-log.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { RolesModule } from '../roles/roles.module';
     forwardRef(() => UsersModule), 
     PassportModule,
     RolesModule,
+    AuditLogModule,
     JwtModule.register({
       secret: 'SMARTSITE_SECRET_KEY',
       signOptions: { expiresIn: '1d' },
