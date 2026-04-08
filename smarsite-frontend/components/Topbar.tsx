@@ -3,6 +3,7 @@
 import { Bell, Settings, Bot, Send, X, Loader2 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import AccessibilityMenu from '@/components/AccessibilityMenu';
 
 interface User {
   fullName?: string;
@@ -330,6 +331,8 @@ export default function Topbar() {
                 Ask AI
               </button>
             )}
+             <AccessibilityMenu />
+         
 
             {/* Bell avec badge */}
             <button className="relative p-2 rounded-lg hover:bg-secondary transition-colors"
