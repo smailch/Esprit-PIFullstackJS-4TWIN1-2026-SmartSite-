@@ -223,7 +223,9 @@ export default function ClientQuestionsPage() {
                                             style={{
                                                 flex: 1, border: '1px solid #e0e0e0', borderRadius: '10px',
                                                 padding: '10px 14px', fontSize: '13px', resize: 'none', outline: 'none',
-                                                fontFamily: 'inherit', backgroundColor: '#f8faff'
+                                                fontFamily: 'inherit', backgroundColor: '#f8faff',
+                                                color: '#1a1a2e',                 // ✅ ajoute
+                                                WebkitTextFillColor: '#1a1a2e',  // ✅
                                             }}
                                         />
                                         <button

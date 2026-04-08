@@ -488,7 +488,8 @@ const s = {
   eyeBtn:  { cursor: 'pointer', padding: '4px', color: '#888', display: 'flex', alignItems: 'center' },
   input: {
     flex: 1, border: 'none', outline: 'none', padding: '10px 4px',
-    width: '100%', backgroundColor: 'transparent', fontSize: '13px',
+    width: '100%', backgroundColor: 'transparent', fontSize: '13px', color: '#1a1a2e',                 // ✅ ajoute
+    WebkitTextFillColor: '#1a1a2e',
   },
   errorText: { color: '#ef4444', fontSize: '11px', marginBottom: '6px', marginTop: '2px' },
   primaryBtn: {

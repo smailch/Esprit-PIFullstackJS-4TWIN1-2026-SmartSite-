@@ -588,7 +588,7 @@ const s = {
   inputWrap: { display: 'flex', alignItems: 'center', border: '1px solid #e0e0e0', borderRadius: '10px',
     padding: '0 14px', backgroundColor: '#fcfcfc', transition: 'border-color 0.2s' },
   inputIcon: { marginRight: '8px', fontSize: '16px', flexShrink: 0 },
-  input: { flex: 1, border: 'none', outline: 'none', padding: '12px 4px', backgroundColor: 'transparent', fontSize: '14px', width: '100%' },
+  input: { flex: 1, border: 'none', outline: 'none', padding: '12px 4px', backgroundColor: 'transparent', fontSize: '14px', width: '100%', color: '#1a1a2e', WebkitTextFillColor: '#1a1a2e',   },
   hint:    { fontSize: '11px', color: '#aaa', marginTop: '5px', fontStyle: 'italic' },
   saveBtn: { padding: '13px 28px', borderRadius: '10px', border: 'none', backgroundColor: '#f28c28',
     color: '#000', fontWeight: '700', fontSize: '14px', cursor: 'pointer', transition: '0.2s', alignSelf: 'flex-start' },

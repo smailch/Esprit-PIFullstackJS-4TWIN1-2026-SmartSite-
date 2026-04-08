@@ -234,6 +234,8 @@ const styles = {
     width: '100%',
     backgroundColor: 'transparent',
     fontSize: '13px',
+      color: '#1a1a2e',                          // ✅ ajoute ça
+  WebkitTextFillColor: '#1a1a2e',  
   },
   errorText: { color: '#ef4444', fontSize: '11px', marginBottom: '6px', marginTop: '2px' },
   errorBox: {

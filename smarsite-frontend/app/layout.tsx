@@ -41,6 +41,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`font-sans antialiased`}>
         {children}
+        <ToasterClient /> 
         <Script
           src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"
           strategy="beforeInteractive"

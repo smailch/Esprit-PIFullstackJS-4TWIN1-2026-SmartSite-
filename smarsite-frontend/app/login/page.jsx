@@ -297,7 +297,7 @@ const Login = () => {
       const res = await axios.post('http://localhost:3200/auth/login', { email, password });
       localStorage.setItem('token', res.data.access_token);
       // ✅ Next.js : router.push remplace navigate()
-      router.push('/');
+      router.push('/home');
     } catch {
       setError('Invalid email or password');
     }
@@ -314,7 +314,7 @@ const Login = () => {
       );
       localStorage.setItem('token', res.data.access_token);
       // ✅ Next.js : router.push remplace navigate()
-      router.push('/');
+      router.push('/home');
     } catch (err) {
       setError('Unrecognized face.');
     } finally {
@@ -341,7 +341,7 @@ const Login = () => {
           {successMessage && <div style={styles.successBox}>{successMessage}</div>}
           {error && <div style={styles.errorBox}>{error}</div>}
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} noValidate>
             <label style={styles.label}>Email</label>
             <div style={styles.inputGroup}>
               <span style={styles.icon}>👤</span>
@@ -427,7 +427,24 @@ const Login = () => {
 
               delay prediction and real-time budget control.
             </p>
-            {/* ✅ Next.js : router.push remplace navigate() */}
+            <button
+              onClick={() => router.push('/dashboard/clients')}
+              style={{
+                marginTop: '12px',
+                width: '90%',
+                backgroundColor: 'transparent',
+                color: '#f9fafb',
+                border: '2px solid #7a91b5',
+                padding: '12px 24px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: '700',
+                fontSize: '14px',
+                transition: '0.2s',
+              }}
+            >
+              Espace Client
+            </button>
 
           </div>
         </div>
@@ -513,7 +530,7 @@ const styles = {
     transform: 'translate(-50%,-50%)', userSelect: 'none'
   },
   card: {
-    display: 'flex', width: '900px', minHeight: '580px', backgroundColor: 'white',
+    display: 'flex', width: '750px', minHeight: '480px', backgroundColor: 'white',
     borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.3)', zIndex: 1,
   },
   leftSection: {
@@ -535,6 +552,8 @@ const styles = {
   input: {
     flex: 1, border: 'none', outline: 'none', padding: '12px 4px',
     width: '100%', backgroundColor: 'transparent', fontSize: '14px',
+    color: '#1a1a2e',                          // ✅ ajoute ça
+    WebkitTextFillColor: '#1a1a2e',
   },
   footerRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px' },
   button: {

@@ -14,25 +14,25 @@ const ResetPassword = () => {
   // ✅ Next.js : useRouter remplace useNavigate
   const router = useRouter();
 
-  const [password,     setPassword]     = useState('');
-  const [confirm,      setConfirm]      = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm,  setShowConfirm]  = useState(false);
-  const [error,        setError]        = useState('');
-  const [success,      setSuccess]      = useState('');
-  const [loading,      setLoading]      = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const getStrength = (pwd) => {
     if (!pwd) return 0;
     let score = 0;
-    if (pwd.length >= 8)            score++;
-    if (/[A-Z]/.test(pwd))          score++;
-    if (/[0-9]/.test(pwd))          score++;
-    if (/[^A-Za-z0-9]/.test(pwd))   score++;
+    if (pwd.length >= 8) score++;
+    if (/[A-Z]/.test(pwd)) score++;
+    if (/[0-9]/.test(pwd)) score++;
+    if (/[^A-Za-z0-9]/.test(pwd)) score++;
     return score;
   };
 
-  const strength      = getStrength(password);
+  const strength = getStrength(password);
   const strengthLabel = ['', 'Faible', 'Moyen', 'Bon', 'Fort'][strength];
   const strengthColor = ['', '#ef4444', '#f97316', '#84cc16', '#22c55e'][strength];
 
@@ -75,7 +75,7 @@ const ResetPassword = () => {
           <h2 style={styles.title}>Nouveau mot de passe</h2>
           <p style={styles.subtitle}>Choisissez un mot de passe sécurisé pour votre compte.</p>
 
-          {error   && <div style={styles.errorBox}>{error}</div>}
+          {error && <div style={styles.errorBox}>{error}</div>}
           {success && <div style={styles.successBox}>{success}</div>}
 
           <form onSubmit={handleSubmit}>
@@ -172,7 +172,7 @@ const styles = {
     backgroundColor: '#132849', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
     position: 'relative', overflow: 'hidden',
   },
-  deco1: { position: 'absolute', top: '8%',  left: '5%',  fontSize: '80px',  opacity: 0.07, color: 'white', userSelect: 'none' },
+  deco1: { position: 'absolute', top: '8%', left: '5%', fontSize: '80px', opacity: 0.07, color: 'white', userSelect: 'none' },
   deco2: { position: 'absolute', bottom: '10%', right: '4%', fontSize: '100px', opacity: 0.07, color: 'white', userSelect: 'none' },
   deco3: { position: 'absolute', top: '50%', left: '50%', fontSize: '200px', opacity: 0.03, color: 'white', transform: 'translate(-50%,-50%)', userSelect: 'none' },
   card: {
@@ -186,20 +186,23 @@ const styles = {
     fontSize: '13px', fontWeight: '800', letterSpacing: '3px', color: '#132849',
     textTransform: 'uppercase', marginBottom: '24px', borderLeft: '3px solid #FACC15', paddingLeft: '10px',
   },
-  title:    { fontSize: '28px', fontWeight: '700', color: '#1a1a2e', marginBottom: '6px' },
+  title: { fontSize: '28px', fontWeight: '700', color: '#1a1a2e', marginBottom: '6px' },
   subtitle: { color: '#888', fontSize: '14px', marginBottom: '24px' },
-  label:    { fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '6px', display: 'block' },
+  label: { fontSize: '13px', fontWeight: '600', color: '#555', marginBottom: '6px', display: 'block' },
   inputGroup: {
     display: 'flex', alignItems: 'center', border: '1px solid #e0e0e0',
     borderRadius: '8px', padding: '0 12px', backgroundColor: '#fcfcfc', transition: 'border-color 0.2s',
   },
-  icon:   { marginRight: '8px', fontSize: '16px' },
-  input:  { flex: 1, border: 'none', outline: 'none', padding: '12px 4px', backgroundColor: 'transparent', fontSize: '14px' },
+  icon: { marginRight: '8px', fontSize: '16px' },
+  input: {
+    flex: 1, border: 'none', outline: 'none', padding: '12px 4px', backgroundColor: 'transparent', fontSize: '14px', color: '#1a1a2e',                 // ✅ ajoute
+    WebkitTextFillColor: '#1a1a2e',
+  },
   eyeBtn: { cursor: 'pointer', fontSize: '16px', padding: '4px', userSelect: 'none' },
   strengthWrapper: { display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px' },
-  strengthTrack:   { display: 'flex', gap: '4px', flex: 1 },
+  strengthTrack: { display: 'flex', gap: '4px', flex: 1 },
   strengthSegment: { flex: 1, height: '4px', borderRadius: '2px', transition: 'background-color 0.3s' },
-  strengthText:    { fontSize: '12px', fontWeight: '600', minWidth: '40px' },
+  strengthText: { fontSize: '12px', fontWeight: '600', minWidth: '40px' },
   button: {
     marginTop: '28px', width: '100%', backgroundColor: '#FACC15', color: '#000',
     border: 'none', padding: '14px', borderRadius: '8px', cursor: 'pointer',
@@ -223,9 +226,9 @@ const styles = {
     display: 'flex', flexDirection: 'column', justifyContent: 'center',
     alignItems: 'center', padding: '40px', color: 'white', textAlign: 'center',
   },
-  shield:     { fontSize: '52px', marginBottom: '20px' },
+  shield: { fontSize: '52px', marginBottom: '20px' },
   rightTitle: { fontSize: '24px', fontWeight: '700', marginBottom: '16px' },
-  rightText:  { fontSize: '14px', lineHeight: '1.7', opacity: 0.85, marginBottom: '24px' },
+  rightText: { fontSize: '14px', lineHeight: '1.7', opacity: 0.85, marginBottom: '24px' },
   tips: {
     listStyle: 'none', padding: 0, margin: 0, textAlign: 'left',
     fontSize: '13px', lineHeight: '2', opacity: 0.9, color: '#FACC15', fontWeight: '600',
