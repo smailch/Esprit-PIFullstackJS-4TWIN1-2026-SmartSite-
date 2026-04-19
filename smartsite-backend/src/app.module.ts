@@ -7,8 +7,8 @@ import { ResourcesModule } from './resources/resources.module';
 
 /**
  * Racine du package `smartsite-backend/`.
- * En build, `app.module` est émis sous `dist/src/`, donc `join(__dirname, '..')` ne suffit pas
- * pour trouver `.env` à la racine — `process.cwd()` avec `npm run start:dev` depuis ce dossier est fiable.
+ * Le build TypeScript émet `dist/` depuis `./src` uniquement (`tsconfig.build.json`).
+ * Pour charger `.env` à la racine du backend : `process.cwd()` avec `npm run start:dev` depuis ce dossier est fiable.
  * Si `npm` est lancé depuis la racine du dépôt, on charge aussi `smartsite-backend/.env` lorsqu’il existe.
  */
 const backendRoot = join(process.cwd());
@@ -41,6 +41,7 @@ import { InvoicesModule } from './modules/finance/invoices/invoices.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { DocumentsModule } from './documents/documents.module';
 import { ProgressPhotosModule } from './progress-photos/progress-photos.module';
+import { DreamHouseModule } from './dream-house/dream-house.module';
 
 @Module({
   imports: [
@@ -91,6 +92,7 @@ import { ProgressPhotosModule } from './progress-photos/progress-photos.module';
     AttendanceModule,
     DocumentsModule,
     ProgressPhotosModule,
+    DreamHouseModule,
   ],
   controllers: [],
   providers: [],

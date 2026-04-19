@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import MainLayout from '@/components/MainLayout';
 import PageHeader from '@/components/PageHeader';
 import TaskForm, { type TaskFormValues } from '@/components/TaskForm';
@@ -829,122 +829,140 @@ function TasksPageContent() {
       )}
 
       <div
-        className={`rounded-xl border border-border/80 bg-card shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06] ${
+        className={`w-full rounded-xl border border-border/80 bg-card shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06] ${
           viewMode === 'board' ? 'hidden' : ''
         }`}
       >
-        <div className="w-full overflow-x-auto overscroll-x-contain">
-          <table className="w-full min-w-[64rem] table-auto border-separate border-spacing-0 text-sm leading-relaxed">
+        <div className="w-full min-w-0 overflow-x-auto overscroll-x-contain [scrollbar-gutter:stable]">
+          <table className="w-full min-w-0 table-fixed border-separate border-spacing-0 text-sm leading-relaxed">
+            <colgroup>
+              <col style={{ width: '17%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '6%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '12%' }} />
+            </colgroup>
             <caption className="sr-only">
-              Task list. Rows correspond to tasks; columns include title, project, assignment, progress,
-              and actions. Use Tab to move between filters, table selects, task title links, and action
-              buttons. When a status, priority, or Board or Table layout control is focused, use Left,
-              Right, Home, and End to change the option. In Board view, use the Move task menu on each card
-              to change status without dragging. Widen the window or scroll horizontally to reach all
-              columns.
+              Task list. Each task has a data row then an actions row with Edit and Delete. Columns are
+              task title, project, dependencies (Deps), jobs count, assignee (Assigned), progress, spent
+              budget (Spent), status, and priority. Use Tab to move between filters, controls, links, and
+              action buttons.
             </caption>
             <thead>
               <tr className="bg-muted/55 dark:bg-muted/40">
                 <th
                   scope="col"
-                  className="border-b border-border px-3 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground first:pl-4 sm:px-4"
+                  title="Task"
+                  className="max-w-0 overflow-hidden text-ellipsis whitespace-nowrap border-b border-border px-2.5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground first:pl-4 last:pr-4 sm:px-3 sm:first:pl-6 sm:last:pr-6"
                 >
                   Task
                 </th>
                 <th
                   scope="col"
-                  className="border-b border-border px-3 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:px-4"
+                  title="Project"
+                  className="max-w-0 overflow-hidden text-ellipsis whitespace-nowrap border-b border-border px-2.5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:px-3"
                 >
                   Project
                 </th>
                 <th
                   scope="col"
-                  className="border-b border-border px-3 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:px-4"
+                  title="Dependencies"
+                  className="max-w-0 overflow-hidden text-ellipsis whitespace-nowrap border-b border-border px-2.5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:px-3"
                 >
-                  Dependencies
+                  Deps
                 </th>
                 <th
                   scope="col"
-                  className="border-b border-border px-3 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:px-4"
+                  title="Jobs"
+                  className="max-w-0 overflow-hidden text-ellipsis whitespace-nowrap border-b border-border px-2.5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:px-3"
                 >
                   Jobs
                 </th>
                 <th
                   scope="col"
-                  className="border-b border-border px-3 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:px-4"
+                  title="Assigned to"
+                  className="max-w-0 overflow-hidden text-ellipsis whitespace-nowrap border-b border-border px-2.5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:px-3"
                 >
-                  Assigned to
+                  Assigned
                 </th>
                 <th
                   scope="col"
-                  className="border-b border-border px-3 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:px-4"
+                  title="Progress"
+                  className="max-w-0 overflow-hidden text-ellipsis whitespace-nowrap border-b border-border px-2.5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:px-3"
                 >
                   Progress
                 </th>
                 <th
                   scope="col"
-                  className="border-b border-border px-3 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:px-4 tabular-nums"
+                  title="Spent budget"
+                  className="max-w-0 overflow-hidden text-ellipsis whitespace-nowrap border-b border-border px-2.5 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground tabular-nums sm:px-3"
                 >
-                  Spent budget
+                  Spent
                 </th>
                 <th
                   scope="col"
-                  className="border-b border-border px-3 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:px-4"
+                  title="Status"
+                  className="max-w-0 overflow-hidden text-ellipsis whitespace-nowrap border-b border-border px-2.5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:px-3"
                 >
                   Status
                 </th>
                 <th
                   scope="col"
-                  className="border-b border-border px-3 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:px-4"
+                  title="Priority"
+                  className="max-w-0 overflow-hidden text-ellipsis whitespace-nowrap border-b border-border px-2.5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground last:pr-4 sm:px-3 sm:last:pr-6"
                 >
                   Priority
-                </th>
-                <th
-                  scope="col"
-                  className="border-b border-border px-3 py-3.5 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground last:pr-4 sm:px-4"
-                >
-                  Actions
                 </th>
               </tr>
             </thead>
             <tbody>
               {filteredTasks.map((task, rowIndex) => (
+                <Fragment key={task.id}>
                     <tr
-                      key={task.id}
-                      className={`border-b border-border/50 transition-colors hover:bg-primary/[0.06] dark:hover:bg-primary/[0.08] ${
+                      className={`border-b-0 transition-colors hover:bg-primary/[0.06] dark:hover:bg-primary/[0.08] ${
                         rowIndex % 2 === 0 ? 'bg-card' : 'bg-muted/25'
                       }`}
                     >
-                      <td className="border-b border-border/35 px-3 py-4 align-top break-words first:pl-4 min-w-[12rem] sm:px-4">
-                        <div className="flex items-start gap-3 min-w-0">
+                      <td className="min-w-0 overflow-hidden border-b border-border/35 px-2.5 py-4 align-top first:pl-4 sm:px-3 sm:first:pl-6 [&>*]:min-w-0">
+                        <div className="flex min-w-0 items-start gap-2 sm:gap-3">
                           <Clipboard size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden />
                           <button
                             type="button"
                             onClick={() => setTaskJobsPanelId(task.id)}
-                            className="text-left text-[15px] font-semibold leading-snug text-foreground rounded-md ring-offset-background transition-colors hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            className="min-w-0 overflow-hidden text-left break-words text-[15px] font-semibold leading-snug text-foreground rounded-md ring-offset-background transition-colors hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                           >
                             {task.title}
                           </button>
                         </div>
                       </td>
-                      <td className="border-b border-border/35 px-3 py-4 align-top break-words min-w-[10rem] sm:px-4">
-                        <div className="flex items-start gap-2.5 min-w-0">
+                      <td className="min-w-0 overflow-hidden border-b border-border/35 px-2.5 py-4 align-top sm:px-3 [&>*]:min-w-0">
+                        <div className="flex min-w-0 items-start gap-2 sm:gap-2.5">
                           <Briefcase size={16} className="mt-0.5 shrink-0 text-primary/70" aria-hidden />
-                          <span className="text-[15px] font-medium leading-snug text-foreground">{task.project}</span>
+                          <span className="break-words text-[15px] font-medium leading-snug text-foreground">{task.project}</span>
                         </div>
                       </td>
-                      <td className="border-b border-border/35 px-3 py-4 align-top break-words sm:px-4">
+                      <td className="min-w-0 overflow-hidden border-b border-border/35 px-2.5 py-4 align-top sm:px-3 [&>*]:min-w-0">
                         {task.dependencyCount > 0 ? (
-                          <span className="inline-flex max-w-full items-center justify-center whitespace-normal rounded-md bg-blue-100 px-2.5 py-1 text-center text-xs font-medium leading-snug text-blue-900 dark:bg-blue-950/55 dark:text-blue-100">
-                            Depends on {task.dependencyCount} task(s)
+                          <span
+                            className="inline-flex max-w-full items-center rounded-md bg-blue-100 px-2 py-1 text-xs font-medium leading-tight text-blue-900 dark:bg-blue-950/55 dark:text-blue-100"
+                            title={`Depends on ${task.dependencyCount} task(s)`}
+                          >
+                            {task.dependencyCount} deps
                           </span>
                         ) : (
-                          <span className="inline-flex max-w-full items-center justify-center whitespace-normal rounded-md bg-muted/80 px-2.5 py-1 text-center text-xs font-medium leading-snug text-muted-foreground">
-                            No dependencies
+                          <span
+                            className="inline-flex items-center rounded-md bg-muted/80 px-2 py-1 text-xs font-medium text-muted-foreground"
+                            title="No dependencies"
+                          >
+                            None
                           </span>
                         )}
                       </td>
-                      <td className="border-b border-border/35 px-3 py-4 align-top sm:px-4">
+                      <td className="min-w-0 overflow-hidden border-b border-border/35 px-2.5 py-4 align-top whitespace-nowrap sm:px-3">
                         <button
                           type="button"
                           onClick={() => setTaskJobsPanelId(task.id)}
@@ -956,14 +974,14 @@ function TasksPageContent() {
                           {isJobsLoading ? '…' : task.jobCount}
                         </button>
                       </td>
-                      <td className="border-b border-border/35 px-3 py-4 align-top break-words min-w-[9rem] sm:px-4">
-                        <div className="flex items-start gap-2.5 min-w-0">
+                      <td className="min-w-0 overflow-hidden border-b border-border/35 px-2.5 py-4 align-top sm:px-3 [&>*]:min-w-0">
+                        <div className="flex min-w-0 items-start gap-2 sm:gap-2.5">
                           <Users size={16} className="mt-0.5 shrink-0 text-primary/80" aria-hidden />
-                          <span className="text-[15px] font-medium leading-snug text-foreground">{task.assignedToLabel}</span>
+                          <span className="break-words text-[15px] font-medium leading-snug text-foreground">{task.assignedToLabel}</span>
                         </div>
                       </td>
-                      <td className="border-b border-border/35 px-3 py-4 align-top sm:px-4">
-                        <div className="w-full max-w-[6.25rem]">
+                      <td className="min-w-0 overflow-hidden border-b border-border/35 px-2.5 py-4 align-top sm:px-3 [&>*]:min-w-0">
+                        <div className="w-full min-w-0">
                           <div className="mb-1.5 flex items-center justify-between gap-2">
                             <span className="text-xs font-semibold tabular-nums text-foreground">{task.progress}%</span>
                           </div>
@@ -973,7 +991,7 @@ function TasksPageContent() {
                             aria-valuemax={100}
                             aria-valuenow={task.progress}
                             aria-label={`Progress for ${task.title}: ${task.progress} percent`}
-                            className="h-2.5 w-full overflow-hidden rounded-full bg-muted"
+                            className="h-2.5 w-full min-w-0 overflow-hidden rounded-full bg-muted"
                           >
                             <div
                               className="h-full rounded-full bg-accent transition-[width] duration-300"
@@ -983,11 +1001,11 @@ function TasksPageContent() {
                           </div>
                         </div>
                       </td>
-                      <td className="border-b border-border/35 px-3 py-4 text-right align-top tabular-nums sm:px-4">
+                      <td className="min-w-0 overflow-hidden border-b border-border/35 px-2.5 py-4 text-right align-top tabular-nums sm:px-3">
                         <span className="text-[15px] font-semibold text-foreground">{formatDh(task.spentBudget)}</span>
                       </td>
-                      <td className="border-b border-border/35 px-3 py-4 align-top sm:px-4">
-                        <div className="flex flex-wrap items-center gap-2">
+                      <td className="min-w-0 overflow-hidden border-b border-border/35 px-2.5 py-4 align-top sm:px-3 [&>*]:min-w-0">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
                           <span className={getTaskStatusStyle(task.status)}>
                             {taskStatusLabel(task.status)}
                           </span>
@@ -998,11 +1016,24 @@ function TasksPageContent() {
                           ) : null}
                         </div>
                       </td>
-                      <td className="border-b border-border/35 px-3 py-4 align-top sm:px-4">
-                        <span className={getPriorityStyle(task.priority)}>{priorityCellLabel(task.priority)}</span>
+                      <td className="min-w-0 overflow-hidden border-b border-border/35 px-2.5 py-4 align-top last:pr-4 sm:px-3 sm:last:pr-6">
+                        <span className={`max-w-full ${getPriorityStyle(task.priority)}`}>{priorityCellLabel(task.priority)}</span>
                       </td>
-                      <td className="border-b border-border/35 px-3 py-4 align-top break-words last:pr-4 sm:px-4">
-                        <div className="flex flex-wrap items-center justify-center gap-2">
+                    </tr>
+                    <tr
+                      className={`border-b border-border/50 transition-colors hover:bg-primary/[0.06] dark:hover:bg-primary/[0.08] ${
+                        rowIndex % 2 === 0 ? 'bg-card' : 'bg-muted/25'
+                      }`}
+                    >
+                      <td
+                        colSpan={9}
+                        className="border-b border-border/35 border-t border-border/40 px-2.5 py-2.5 first:pl-4 last:pr-4 sm:px-3 sm:first:pl-6 sm:last:pr-6"
+                      >
+                        <div
+                          role="group"
+                          aria-label={`Actions for ${task.title}`}
+                          className="flex flex-wrap items-center justify-end gap-2"
+                        >
                           <button
                             type="button"
                             onClick={() => openEditModal(task.id)}
@@ -1025,6 +1056,7 @@ function TasksPageContent() {
                         </div>
                       </td>
                     </tr>
+                </Fragment>
               ))}
             </tbody>
           </table>

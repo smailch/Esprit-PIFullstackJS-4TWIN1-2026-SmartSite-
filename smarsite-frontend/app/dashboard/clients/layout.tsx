@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
-import logoImg from "./logosmartsite.png";
+import { Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -34,8 +34,10 @@ export default function ClientsMarketingLayout({
             className="group flex items-center gap-3 transition-opacity hover:opacity-95"
           >
             <Image
-              src={logoImg}
+              src="/logo-smartsite-clients.svg"
               alt="SmartSite"
+              width={420}
+              height={96}
               className="h-16 w-auto sm:h-[5.5rem] md:h-28 lg:h-32"
               sizes="(max-width: 640px) 240px, (max-width: 1024px) 360px, 420px"
               priority
@@ -54,6 +56,17 @@ export default function ClientsMarketingLayout({
             <a href="#telegram" className={cn(navLink, "hidden md:inline")}>
               Telegram
             </a>
+            <Link
+              href="/dream-house"
+              title="Dream House — visualisation 3D"
+              className={cn(
+                navLink,
+                "inline-flex items-center gap-1.5 text-orange-200/95",
+              )}
+            >
+              <Home className="size-4 shrink-0 opacity-90" aria-hidden />
+              <span className="hidden sm:inline">Dream House</span>
+            </Link>
             <Link href="/home" className={navCta}>
               Se Connecter
             </Link>

@@ -50,13 +50,24 @@ async function apiFetch<T>(
   endpoint: string,
   options?: RequestInit
 ): Promise<T> {
-  const res = await fetch(`${getApiBaseUrl()}${endpoint}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(options?.headers || {}),
-    },
-    ...options,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${getApiBaseUrl()}${endpoint}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(options?.headers || {}),
+      },
+      ...options,
+    });
+  } catch (e) {
+    const hint =
+      e instanceof Error ? e.message : "erreur réseau inconnue";
+    throw new ApiError(
+      `Impossible de joindre l’API (${hint}). En local, lancez le backend Nest (port 3200) et le frontend avec le proxy /api-backend.`,
+      0,
+      e,
+    );
+  }
 
   if (!res.ok) {
     const info = await res.json().catch(() => null);
@@ -70,7 +81,18 @@ async function apiFetch<T>(
   }
 
   const text = await res.text();
-  return text ? JSON.parse(text) : (undefined as T);
+  if (!text.trim()) {
+    return undefined as T;
+  }
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new ApiError(
+      `Réponse invalide (pas du JSON) pour ${endpoint}. Souvent : le backend Nest n’est pas démarré ou une page HTML d’erreur est renvoyée.`,
+      res.status,
+      { rawPreview: text.slice(0, 200) },
+    );
+  }
 }
 
 
@@ -388,6 +410,72 @@ export function projectAssistantChat(
       body: JSON.stringify({ messages }),
     }
   );
+}
+
+/* ======================
+        Dream House (Pollinations + Tripo proxy)
+====================== */
+
+export type DreamHouseStartResponse = {
+  /** Première image (rétrocompat). */
+  imageUrl: string;
+  imageUrls: string[];
+  taskId: string;
+};
+
+export function startDreamHouse(payload: {
+  description: string;
+  accentColor: string;
+  budgetEur?: number;
+  terrainM2?: number;
+  architectureStyle?: string;
+  detailTags?: string[];
+}): Promise<DreamHouseStartResponse> {
+  return apiFetch<DreamHouseStartResponse>(`/dream-house/start`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export type DreamHouseTripoStatus = {
+  status: string;
+  modelGlbUrl?: string;
+  message?: string;
+  progress?: number;
+};
+
+export function getDreamHouseTripoTaskStatus(
+  taskId: string
+): Promise<DreamHouseTripoStatus> {
+  return apiFetch<DreamHouseTripoStatus>(
+    `/dream-house/tripo-task/${encodeURIComponent(taskId)}`
+  );
+}
+
+async function dreamHouseBlob(
+  endpoint: string,
+  body: Record<string, string>
+): Promise<Blob> {
+  const res = await fetch(`${getApiBaseUrl()}${endpoint}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const info = await res.json().catch(() => null);
+    throw new ApiError(formatBackendMessage(info, res.status), res.status, info);
+  }
+  return res.blob();
+}
+
+/** Image Pollinations via le backend (corps JSON `{ url }`). */
+export function fetchDreamHousePollinationsBlob(url: string): Promise<Blob> {
+  return dreamHouseBlob(`/dream-house/pollinations-image`, { url });
+}
+
+/** Fichier GLB Tripo via le backend (corps JSON `{ url }`). */
+export function fetchDreamHouseGlbBlob(url: string): Promise<Blob> {
+  return dreamHouseBlob(`/dream-house/model-glb`, { url });
 }
 
 

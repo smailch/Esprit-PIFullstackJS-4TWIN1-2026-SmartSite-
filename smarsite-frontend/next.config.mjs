@@ -17,6 +17,18 @@ const nextConfig = {
   },
   images: {
     unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "api.qrserver.com",
+        pathname: "/**",
+      },
+    ],
   },
   /** Same-origin en dev : le navigateur appelle /api-backend/*, Next transfère vers Nest (évite CORS / « Failed to fetch »). */
   async rewrites() {

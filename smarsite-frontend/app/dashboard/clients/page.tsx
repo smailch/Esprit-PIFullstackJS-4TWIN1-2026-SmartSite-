@@ -8,10 +8,17 @@ import {
   HardHat,
   Shield,
 } from "lucide-react";
-import heroImg from "./813_pro_actu-drupal_eac_3c0_ca9d616042820ddfaf70627e63_eac3c0ca9d616042820ddfaf70627e63.jpg";
-import partnershipImg from "./images (1).jpg";
-import telegramQrImg from "./frame.png";
 import { cn } from "@/lib/utils";
+
+/** Assets locaux absents du dépôt — URLs stables (remplacez par /public/... si vous ajoutez vos fichiers). */
+const HERO_IMAGE_URL =
+  "https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1920&q=80";
+const PARTNERSHIP_IMAGE_URL =
+  "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=1200&q=80";
+const telegramDeepLink = "https://t.me/SmartSite_Project_bot";
+const TELEGRAM_QR_IMAGE_URL = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=10&data=${encodeURIComponent(
+  telegramDeepLink,
+)}`;
 
 const BRAND_ORANGE = "#f97316";
 
@@ -108,7 +115,7 @@ export default function ClientsMarketingPage() {
         aria-labelledby="hero-title"
       >
         <Image
-          src={heroImg}
+          src={HERO_IMAGE_URL}
           alt="Professionnelle du BTP sur chantier, tablette en main"
           fill
           priority
@@ -154,12 +161,23 @@ export default function ClientsMarketingPage() {
             et un suivi professionnel — tout ce qu&apos;il faut pour avancer sereinement,
             sans friction.
           </p>
-          <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+          <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
             <PrimaryCta href="#contact">
               Demander une proposition
               <ArrowUpRight className="size-[1.125rem]" strokeWidth={2.25} aria-hidden />
             </PrimaryCta>
             <GhostCta href="#offre">Découvrir l&apos;offre</GhostCta>
+            <Link
+              href="/dream-house"
+              className={cn(
+                "inline-flex items-center justify-center gap-2 rounded-2xl border border-orange-400/35 bg-orange-500/10 px-7 py-3.5 text-[15px] font-semibold text-orange-100 backdrop-blur-sm",
+                "transition-all duration-200 hover:border-orange-400/55 hover:bg-orange-500/20 hover:text-white",
+                "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-300",
+              )}
+            >
+              Dream House — visualisation 3D
+              <ArrowUpRight className="size-[1.125rem]" strokeWidth={2.25} aria-hidden />
+            </Link>
           </div>
           <ul className="mt-16 flex flex-col gap-4 border-t border-white/15 pt-9 text-sm text-white/[0.88] sm:flex-row sm:flex-wrap sm:gap-x-12 sm:gap-y-3">
             <li className="flex items-start gap-3">
@@ -293,7 +311,7 @@ export default function ClientsMarketingPage() {
                 aria-hidden
               />
               <Image
-                src={partnershipImg}
+                src={PARTNERSHIP_IMAGE_URL}
                 alt="Partenariat professionnel sur chantier"
                 fill
                 className="object-cover transition duration-700 hover:scale-[1.02] motion-reduce:transition-none motion-reduce:hover:scale-100"
@@ -368,10 +386,13 @@ export default function ClientsMarketingPage() {
             <div className="mt-10 flex justify-center">
               <div className="rounded-3xl border border-white/10 bg-card/80 p-6 shadow-lg shadow-black/25 backdrop-blur-xl sm:p-8">
                 <Image
-                  src={telegramQrImg}
+                  src={TELEGRAM_QR_IMAGE_URL}
                   alt="Code QR pour ouvrir le bot Telegram SmartSite — texte SCAN ME sous le code"
+                  width={280}
+                  height={280}
                   className="h-auto w-full max-w-[280px] object-contain"
                   sizes="(max-width: 640px) 85vw, 280px"
+                  unoptimized
                 />
               </div>
             </div>

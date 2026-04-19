@@ -198,8 +198,7 @@ const PROJECT_STATUS_FILTER_VALUES: ProjectStatusFilter[] = PROJECT_STATUS_FILTE
   (b) => b.value,
 );
 
-/** Row type for the projects table — virtual `actions` column is not on the API model */
-type ProjectTableRow = Project & { actions?: undefined };
+type ProjectTableRow = Project;
 
 export default function ProjectsPage() {
   const router = useRouter();
@@ -564,14 +563,13 @@ export default function ProjectsPage() {
   const tableColumns: Column<ProjectTableRow>[] = [
     {
       key: 'name' as const,
-      label: 'Project Name',
-      headerClassName: 'w-[17%]',
+      label: 'Project',
       cellClassName: 'align-top',
       render: (value: string | number | undefined, row: ProjectTableRow) => (
-        <div className="flex min-w-0 items-start gap-3">
+        <div className="flex min-w-0 items-start gap-2 sm:gap-3">
           {getProjectIcon(0)}
-          <div className="min-w-0">
-            <p className="font-semibold text-foreground">
+          <div className="min-w-0 overflow-hidden">
+            <p className="break-words font-semibold text-foreground">
               {isValidObjectId(row._id) ? (
                 <Link
                   href={`/projects/${row._id}/overview`}
@@ -583,7 +581,7 @@ export default function ProjectsPage() {
                 <>{value != null ? String(value) : ''}</>
               )}
             </p>
-            <p className="max-w-full text-sm text-muted-foreground sm:max-w-[14rem]" title={row.description?.trim() ? row.description : undefined}>
+            <p className="mt-0.5 line-clamp-2 break-words text-sm text-muted-foreground" title={row.description?.trim() ? row.description : undefined}>
               {truncateDescription(row.description)}
             </p>
           </div>
@@ -593,10 +591,9 @@ export default function ProjectsPage() {
     {
       key: 'description' as const,
       label: 'Description',
-      headerClassName: 'w-[11%]',
       cellClassName: 'align-top',
       render: (value: string | number | undefined) => (
-        <span className="line-clamp-3 text-muted-foreground" title={value != null && String(value).length > DESCRIPTION_PREVIEW_LEN ? String(value) : undefined}>
+        <span className="line-clamp-3 break-words text-muted-foreground" title={value != null && String(value).length > DESCRIPTION_PREVIEW_LEN ? String(value) : undefined}>
           {truncateDescription(value != null ? String(value) : undefined)}
         </span>
       ),
@@ -604,16 +601,14 @@ export default function ProjectsPage() {
     {
       key: 'type' as const,
       label: 'Type',
-      headerClassName: 'w-[7%]',
       cellClassName: 'align-top whitespace-nowrap',
       render: (value: string | number | undefined) =>
         value != null && value !== '' ? projectTypeLabel(String(value)) : '—',
     },
     {
       key: 'budget' as const,
-      label: 'Allocated budget',
+      label: 'Allocated',
       align: 'right' as const,
-      headerClassName: 'w-[8%]',
       cellClassName: 'align-top whitespace-nowrap',
       render: (value: number | string | undefined) =>
         value != null && value !== '' && !Number.isNaN(Number(value)) ? (
@@ -630,9 +625,8 @@ export default function ProjectsPage() {
     },
     {
       key: 'spentBudget' as const,
-      label: 'Spent budget',
+      label: 'Spent',
       align: 'right' as const,
-      headerClassName: 'w-[8%]',
       cellClassName: 'align-top whitespace-nowrap',
       render: (_value: string | number | undefined, row: ProjectTableRow) => (
         <span className="tabular-nums font-semibold text-foreground">{formatDh(row.spentBudget)}</span>
@@ -641,7 +635,6 @@ export default function ProjectsPage() {
     {
       key: 'location' as const,
       label: 'Location',
-      headerClassName: 'w-[11%]',
       cellClassName: 'align-top',
       render: (value: string | number | undefined) => {
         const s = value != null ? String(value).trim() : '';
@@ -650,8 +643,7 @@ export default function ProjectsPage() {
     },
     {
       key: 'startDate' as const,
-      label: 'Start Date',
-      headerClassName: 'w-[8%]',
+      label: 'Start',
       cellClassName: 'align-top whitespace-nowrap',
       render: (val: any) => (
         val ? new Date(val).toLocaleDateString() : "-"
@@ -659,8 +651,7 @@ export default function ProjectsPage() {
     },
     {
       key: 'endDate' as const,
-      label: 'End Date',
-      headerClassName: 'w-[8%]',
+      label: 'End',
       cellClassName: 'align-top whitespace-nowrap',
       render: (val: any) => (
         val ? new Date(val).toLocaleDateString() : "-"
@@ -669,125 +660,11 @@ export default function ProjectsPage() {
     {
       key: 'status' as const,
       label: 'Status',
-      headerClassName: 'w-[9%]',
       cellClassName: 'align-top whitespace-nowrap',
       render: (value: string | number | undefined) => (
         <span className={getStatusColor(String(value ?? ''))}>
           {projectStatusLabel(String(value ?? ''))}
         </span>
-      ),
-    },
-    {
-      key: 'actions' as const,
-      label: 'Actions',
-      align: 'center' as const,
-      headerClassName: 'w-[13%] min-w-[220px]',
-      cellClassName: 'align-middle',
-      render: (_value: string | number | undefined, row: ProjectTableRow) => (
-        <div
-          role="group"
-          aria-label={`Actions for ${row.name}`}
-          className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2"
-        >
-          <button
-            type="button"
-            title="Project analysis (backend AI — budget & delay computed server-side)"
-            aria-label={`Backend AI analysis for ${row.name}`}
-            onClick={() => openInsightsForProject(row)}
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-800 text-white shadow-sm transition-[filter] hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-45"
-            disabled={!isValidObjectId(row._id)}
-          >
-            <Brain size={18} className="shrink-0" aria-hidden />
-          </button>
-          <button
-            type="button"
-            title="Project assistant (Groq — chat)"
-            aria-label={`Open project assistant for ${row.name}`}
-            onClick={() => openAssistantForProject(row)}
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-teal-800 text-white shadow-sm transition-[filter] hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-45"
-            disabled={!isValidObjectId(row._id)}
-          >
-            <MessageCircle size={18} className="shrink-0" aria-hidden />
-          </button>
-          <button
-            type="button"
-            title="Generate tasks (Gemini AI)"
-            aria-label={`Generate tasks with AI for ${row.name}`}
-            onClick={() => openAiForProject(row)}
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-white shadow-sm transition-all duration-200 hover:bg-orange-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-45"
-            disabled={!isValidObjectId(row._id)}
-          >
-            <Sparkles size={18} className="shrink-0" aria-hidden />
-          </button>
-          <button
-            type="button"
-            title="Edit"
-            aria-label={`Edit project: ${row.name}`}
-            onClick={() => handleEditClick(row)}
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-[filter] hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-45"
-            disabled={!isValidObjectId(row._id)}
-          >
-            <Pencil size={18} className="shrink-0" aria-hidden />
-          </button>
-          <button
-            type="button"
-            title="Delete"
-            aria-label={`Delete project: ${row.name}`}
-            onClick={() => {
-              if (!isValidObjectId(row._id)) return;
-              setProjectPendingDelete({ id: row._id, name: row.name });
-            }}
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-destructive/30 bg-background text-destructive shadow-sm transition-colors hover:bg-destructive/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-45"
-            disabled={
-              !isValidObjectId(row._id) ||
-              (isDeleteProjectSubmitting && projectPendingDelete?.id === row._id)
-            }
-          >
-            <Trash2 size={18} className="shrink-0" aria-hidden />
-          </button>
-          <button
-            type="button"
-            title="Project overview (KPI, budget, critical path)"
-            aria-label={`Open project overview for ${row.name}`}
-            onClick={() => {
-              if (!isValidObjectId(row._id)) return;
-              router.push(`/projects/${row._id}/overview`);
-            }}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-secondary px-2.5 py-2 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-3"
-            disabled={!isValidObjectId(row._id)}
-          >
-            <LayoutDashboard size={16} className="shrink-0 text-primary" aria-hidden />
-            <span className="hidden sm:inline">Overview</span>
-          </button>
-          <button
-            type="button"
-            title="Open Gantt chart"
-            aria-label={`Open Gantt chart for ${row.name}`}
-            onClick={() => {
-              if (!isValidObjectId(row._id)) return;
-              router.push(`/projects/${row._id}/gantt`);
-            }}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-secondary px-2.5 py-2 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-3"
-            disabled={!isValidObjectId(row._id)}
-          >
-            <BarChart3 size={16} className="shrink-0 text-primary" aria-hidden />
-            <span className="hidden md:inline">Gantt</span>
-          </button>
-          <button
-  type="button"
-  title="Generate financial report"
-  aria-label={`Open financial report for ${row.name}`}
-  onClick={() => {
-    if (!isValidObjectId(row._id)) return;
-    router.push(`/projects/${row._id}/reports`);
-  }}
-  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-secondary px-2.5 py-2 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-3"
-  disabled={!isValidObjectId(row._id)}
->
-  <FileText size={16} className="shrink-0 text-primary" aria-hidden />
-  <span className="hidden md:inline">Report</span>
-</button>
-        </div>
       ),
     },
   ];
@@ -951,12 +828,132 @@ export default function ProjectsPage() {
         </div>
       </div>
 
-      <div className="overflow-x-visible">
+      <div className="w-full min-w-0">
         <DataTable<ProjectTableRow>
           columns={tableColumns}
           data={filteredProjects}
           title="All projects"
-          tableCaption="Construction projects: name, description, type, budgets, location, dates, status, and row actions. Above the table, the status filter uses a radio group: when focused, use Left and Right arrows to change the option."
+          pageLevelScroll
+          colgroup={
+            <colgroup>
+              <col style={{ width: '18%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '15%' }} />
+            </colgroup>
+          }
+          renderRowFooter={(row: ProjectTableRow) => (
+            <div
+              role="group"
+              aria-label={`Actions for ${row.name}`}
+              className="flex flex-wrap items-center gap-x-2 gap-y-2 sm:justify-end"
+            >
+              <button
+                type="button"
+                title="Project analysis (backend AI — budget & delay computed server-side)"
+                aria-label={`Backend AI analysis for ${row.name}`}
+                onClick={() => openInsightsForProject(row)}
+                className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-800 text-white shadow-sm transition-[filter] hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-45"
+                disabled={!isValidObjectId(row._id)}
+              >
+                <Brain size={18} className="shrink-0" aria-hidden />
+              </button>
+              <button
+                type="button"
+                title="Project assistant (Groq — chat)"
+                aria-label={`Open project assistant for ${row.name}`}
+                onClick={() => openAssistantForProject(row)}
+                className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-teal-800 text-white shadow-sm transition-[filter] hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-45"
+                disabled={!isValidObjectId(row._id)}
+              >
+                <MessageCircle size={18} className="shrink-0" aria-hidden />
+              </button>
+              <button
+                type="button"
+                title="Generate tasks (Gemini AI)"
+                aria-label={`Generate tasks with AI for ${row.name}`}
+                onClick={() => openAiForProject(row)}
+                className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-white shadow-sm transition-all duration-200 hover:bg-orange-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-45"
+                disabled={!isValidObjectId(row._id)}
+              >
+                <Sparkles size={18} className="shrink-0" aria-hidden />
+              </button>
+              <button
+                type="button"
+                title="Edit"
+                aria-label={`Edit project: ${row.name}`}
+                onClick={() => handleEditClick(row)}
+                className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-[filter] hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-45"
+                disabled={!isValidObjectId(row._id)}
+              >
+                <Pencil size={18} className="shrink-0" aria-hidden />
+              </button>
+              <button
+                type="button"
+                title="Delete"
+                aria-label={`Delete project: ${row.name}`}
+                onClick={() => {
+                  if (!isValidObjectId(row._id)) return;
+                  setProjectPendingDelete({ id: row._id, name: row.name });
+                }}
+                className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-destructive/30 bg-background text-destructive shadow-sm transition-colors hover:bg-destructive/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-45"
+                disabled={
+                  !isValidObjectId(row._id) ||
+                  (isDeleteProjectSubmitting && projectPendingDelete?.id === row._id)
+                }
+              >
+                <Trash2 size={18} className="shrink-0" aria-hidden />
+              </button>
+              <button
+                type="button"
+                title="Project overview (KPI, budget, critical path)"
+                aria-label={`Open project overview for ${row.name}`}
+                onClick={() => {
+                  if (!isValidObjectId(row._id)) return;
+                  router.push(`/projects/${row._id}/overview`);
+                }}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-secondary px-2.5 py-2 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-3"
+                disabled={!isValidObjectId(row._id)}
+              >
+                <LayoutDashboard size={16} className="shrink-0 text-primary" aria-hidden />
+                <span className="hidden sm:inline">Overview</span>
+              </button>
+              <button
+                type="button"
+                title="Open Gantt chart"
+                aria-label={`Open Gantt chart for ${row.name}`}
+                onClick={() => {
+                  if (!isValidObjectId(row._id)) return;
+                  router.push(`/projects/${row._id}/gantt`);
+                }}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-secondary px-2.5 py-2 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-3"
+                disabled={!isValidObjectId(row._id)}
+              >
+                <BarChart3 size={16} className="shrink-0 text-primary" aria-hidden />
+                <span className="hidden md:inline">Gantt</span>
+              </button>
+              <button
+                type="button"
+                title="Generate financial report"
+                aria-label={`Open financial report for ${row.name}`}
+                onClick={() => {
+                  if (!isValidObjectId(row._id)) return;
+                  router.push(`/projects/${row._id}/reports`);
+                }}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-secondary px-2.5 py-2 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-3"
+                disabled={!isValidObjectId(row._id)}
+              >
+                <FileText size={16} className="shrink-0 text-primary" aria-hidden />
+                <span className="hidden md:inline">Report</span>
+              </button>
+            </div>
+          )}
+          tableCaption="Construction projects: name, description, type, budgets, location, dates, status; actions appear on a second line under each row. Above the table, the status filter uses a radio group: when focused, use Left and Right arrows to change the option."
         />
       </div>
 

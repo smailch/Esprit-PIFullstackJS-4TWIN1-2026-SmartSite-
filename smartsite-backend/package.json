@@ -11,7 +11,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
+    "start:prod": "node dist/main.js",
     "migrate:tasks:dates": "ts-node src/tasks/migrations/add_dependencies_start_end_dates.migration.ts",
     "seed:peinture": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" scripts/seed-peinture-attendance-demo.ts",
     "seed:tunisia-month": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" scripts/seed-tunisia-employee-month.ts",

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
 
@@ -621,4 +621,25 @@ const styles = {
   },
 };
 
-export default Login;
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '60vh',
+            fontFamily: 'system-ui, sans-serif',
+            color: '#64748b',
+          }}
+        >
+          Chargement…
+        </div>
+      }
+    >
+      <Login />
+    </Suspense>
+  );
+}
