@@ -5,6 +5,7 @@ import MainLayout from '@/components/MainLayout';
 import PageHeader from '@/components/PageHeader';
 import TaskForm, { type TaskFormValues } from '@/components/TaskForm';
 import TaskKanbanBoard from '@/components/TaskKanbanBoard';
+import DeleteTaskDialog from '@/components/DeleteTaskDialog';
 import {
   Clipboard,
   Users,
@@ -18,6 +19,10 @@ import {
   X,
   LayoutGrid,
   Table2,
+  ClipboardList,
+  CalendarClock,
+  ExternalLink,
+  Sparkles,
 } from 'lucide-react';
 import useSWR, { mutate } from 'swr';
 import Link from 'next/link';
@@ -33,6 +38,7 @@ import {
   createTask,
   deleteTask,
   fetcher,
+  getJobsKey,
   getProjects,
   getTasksKey,
   getUsersKey,
@@ -45,11 +51,14 @@ import type {
   BackendTask,
   BackendUser,
   Human,
+  Job,
   Project,
   TaskPriority,
   TaskStatus,
 } from '@/lib/types';
 import { isTaskLate } from '@/lib/taskLate';
+import { useRadioGroupKeyboard } from '@/hooks/useRadioGroupKeyboard';
+import { cn } from '@/lib/utils';
 
 type StatusFilter = 'All' | TaskStatus;
 type PriorityFilter = 'All' | TaskPriority;
@@ -62,12 +71,39 @@ interface UiTask {
   project: string;
   assignedToLabel: string;
   dependencyCount: number;
+  /** Jobs liés (GET /jobs, champ taskId). */
+  jobCount: number;
   progress: number;
   spentBudget: number;
   status: TaskStatus;
   priority: TaskPriority;
   /** Indicateur calculé (date de fin dépassée, statut ≠ Done). */
   isLate: boolean;
+}
+
+function jobTaskIdKey(job: Job): string {
+  const t = job.taskId;
+  if (typeof t === 'string') return t;
+  return String(t ?? '');
+}
+
+function jobStatusPanelClass(status: Job['status']): string {
+  switch (status) {
+    case 'Terminé':
+      return 'bg-emerald-500/15 text-emerald-800 ring-emerald-500/20 dark:text-emerald-100 dark:ring-emerald-400/25';
+    case 'En cours':
+      return 'bg-sky-500/15 text-sky-900 ring-sky-500/20 dark:text-sky-100 dark:ring-sky-400/25';
+    case 'Planifié':
+      return 'bg-amber-500/15 text-amber-900 ring-amber-500/20 dark:text-amber-100 dark:ring-amber-400/25';
+    default:
+      return 'bg-muted text-muted-foreground ring-border';
+  }
+}
+
+function formatJobDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
 
 const defaultFormValues = (projectId: string): TaskFormValues => ({
@@ -141,7 +177,16 @@ const TASK_STATUS_FILTERS: { label: string; value: StatusFilter }[] = [
   { label: 'Done', value: 'Terminé' },
 ];
 
+const TASK_STATUS_FILTER_VALUES: StatusFilter[] = TASK_STATUS_FILTERS.map((row) => row.value);
+
+const TASK_VIEW_MODES = ['board', 'table'] as const;
+
+const PRIORITY_FILTER_VALUES: PriorityFilter[] = ['All', 'HIGH', 'MEDIUM', 'LOW'];
+
 const OBJECT_ID_RE = /^[a-fA-F0-9]{24}$/;
+
+const RADIO_FOCUS =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
 
 function scopedProjectIdFromSearchKey(searchKey: string): string | null {
   const p = new URLSearchParams(searchKey).get('project');
@@ -179,18 +224,45 @@ function TasksPageContent() {
   const [mode, setMode] = useState<'create' | 'edit'>('create');
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [taskPendingDelete, setTaskPendingDelete] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
+  const [isDeleteSubmitting, setIsDeleteSubmitting] = useState(false);
   const [formInitialValues, setFormInitialValues] = useState<TaskFormValues>(defaultFormValues(''));
   const [viewMode, setViewMode] = useState<'table' | 'board'>('table');
   const [savingBoardTaskId, setSavingBoardTaskId] = useState<string | null>(null);
   /** Filtre board par projet (ignoré si URL ?project= définit un périmètre). */
   const [boardProjectFilterId, setBoardProjectFilterId] = useState<'all' | string>('all');
+  const [taskJobsPanelId, setTaskJobsPanelId] = useState<string | null>(null);
+
+  const {
+    getTabIndex: getTaskStatusFilterTabIndex,
+    handleKeyDown: onTaskStatusFilterKeyDown,
+    setItemRef: setTaskStatusFilterRef,
+  } = useRadioGroupKeyboard(TASK_STATUS_FILTER_VALUES, statusFilter, setStatusFilter);
+
+  const {
+    getTabIndex: getPriorityFilterTabIndex,
+    handleKeyDown: onPriorityFilterKeyDown,
+    setItemRef: setPriorityFilterRef,
+  } = useRadioGroupKeyboard(PRIORITY_FILTER_VALUES, priorityFilter, setPriorityFilter);
+
+  const {
+    getTabIndex: getViewModeTabIndex,
+    handleKeyDown: onViewModeKeyDown,
+    setItemRef: setViewModeRef,
+  } = useRadioGroupKeyboard(TASK_VIEW_MODES, viewMode, setViewMode);
 
   const {
     data: tasks = [],
     isLoading: isTasksLoading,
     error: tasksError,
   } = useSWR<BackendTask[]>(getTasksKey(), fetcher);
+  const { data: jobs = [], isLoading: isJobsLoading, error: jobsError } = useSWR<Job[]>(
+    getJobsKey(),
+    fetcher,
+  );
   const { data: projects = [], isLoading: isProjectsLoading } = useSWR<Project[]>('/projects', getProjects);
   const { data: users = [], isLoading: isUsersLoading } = useSWR<BackendUser[]>(getUsersKey(), fetcher);
 
@@ -219,6 +291,18 @@ function TasksPageContent() {
     [searchKey],
   );
 
+  const jobsByTaskId = useMemo(() => {
+    const m = new Map<string, Job[]>();
+    for (const job of jobs) {
+      const tid = jobTaskIdKey(job);
+      if (!tid) continue;
+      const list = m.get(tid) ?? [];
+      list.push(job);
+      m.set(tid, list);
+    }
+    return m;
+  }, [jobs]);
+
   const focusTaskId = useMemo(() => {
     const p = new URLSearchParams(searchKey).get('focusTask');
     return p && OBJECT_ID_RE.test(p) ? p : null;
@@ -244,14 +328,25 @@ function TasksPageContent() {
         project: projectsById.get(task.projectId)?.name ?? '—',
         assignedToLabel: assignedToLabel(task, usersById, humansById),
         dependencyCount: Array.isArray(task.dependsOn) ? task.dependsOn.length : 0,
+        jobCount: jobsByTaskId.get(task._id)?.length ?? 0,
         progress: Math.min(100, Math.max(0, task.progress ?? 0)),
         spentBudget: task.spentBudget ?? 0,
         status: task.status,
         priority: task.priority,
         isLate: isTaskLate(task, lateCheckNow),
       })),
-    [tasks, projectsById, usersById, humansById, lateCheckNow],
+    [tasks, projectsById, usersById, humansById, lateCheckNow, jobsByTaskId],
   );
+
+  const panelTask = taskJobsPanelId
+    ? uiTasks.find((t) => t.id === taskJobsPanelId) ?? null
+    : null;
+  const panelJobs = useMemo(() => {
+    if (!taskJobsPanelId) return [];
+    const list = [...(jobsByTaskId.get(taskJobsPanelId) ?? [])];
+    list.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    return list;
+  }, [taskJobsPanelId, jobsByTaskId]);
 
   const uiTasksForScope = useMemo(() => {
     if (!scopedProjectId) return uiTasks;
@@ -484,21 +579,22 @@ function TasksPageContent() {
     }
   };
 
-  const handleDeleteTask = async (taskId: string) => {
-    setDeleteTargetId(taskId);
+  const handleConfirmDeleteTask = async () => {
+    const pending = taskPendingDelete;
+    if (!pending) return;
+    setIsDeleteSubmitting(true);
     try {
-      await deleteTask(taskId);
+      await deleteTask(pending.id);
       await mutate(getTasksKey());
       await mutate('/projects');
+      setTaskPendingDelete(null);
     } catch (error) {
       console.error('Failed to delete task:', error);
       toast({ title: 'Error', description: 'Could not delete the task.' });
     } finally {
-      setDeleteTargetId(null);
+      setIsDeleteSubmitting(false);
     }
   };
-
-  const priorityFilterOptions: PriorityFilter[] = ['All', 'HIGH', 'MEDIUM', 'LOW'];
 
   return (
     <MainLayout>
@@ -509,7 +605,7 @@ function TasksPageContent() {
         <button
           type="button"
           onClick={openCreateModal}
-          className="px-4 py-2 rounded-lg bg-accent text-accent-foreground font-semibold hover:bg-accent/90 transition-colors flex items-center gap-2 shadow-sm focus-visible:outline-none"
+          className={`px-4 py-2 rounded-lg bg-accent text-accent-foreground font-semibold hover:bg-accent/90 transition-colors flex items-center gap-2 shadow-sm ${RADIO_FOCUS}`}
         >
           <Plus size={18} aria-hidden />
           New Task
@@ -537,14 +633,19 @@ function TasksPageContent() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div
             className="inline-flex rounded-lg border border-border bg-muted/40 p-0.5"
-            role="group"
+            role="radiogroup"
             aria-label="Choose task layout"
+            aria-orientation="horizontal"
           >
             <button
               type="button"
+              role="radio"
+              aria-checked={viewMode === 'board'}
+              tabIndex={getViewModeTabIndex('board')}
+              ref={setViewModeRef(0)}
+              onKeyDown={(e) => onViewModeKeyDown(e, 0)}
               onClick={() => setViewMode('board')}
-              aria-pressed={viewMode === 'board'}
-              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none ${
+              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${RADIO_FOCUS} ${
                 viewMode === 'board'
                   ? 'bg-background text-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
@@ -555,9 +656,13 @@ function TasksPageContent() {
             </button>
             <button
               type="button"
+              role="radio"
+              aria-checked={viewMode === 'table'}
+              tabIndex={getViewModeTabIndex('table')}
+              ref={setViewModeRef(1)}
+              onKeyDown={(e) => onViewModeKeyDown(e, 1)}
               onClick={() => setViewMode('table')}
-              aria-pressed={viewMode === 'table'}
-              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none ${
+              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${RADIO_FOCUS} ${
                 viewMode === 'table'
                   ? 'bg-background text-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
@@ -588,15 +693,23 @@ function TasksPageContent() {
             className="m-0 min-w-0 flex flex-1 flex-wrap items-center gap-2 border-0 p-0"
           >
             <legend className="sr-only">Filter tasks by status</legend>
-            <div role="radiogroup" aria-labelledby="tasks-status-heading" className="flex flex-wrap gap-2">
-              {TASK_STATUS_FILTERS.map((row) => (
+            <div
+              role="radiogroup"
+              aria-labelledby="tasks-status-heading"
+              aria-orientation="horizontal"
+              className="flex flex-wrap gap-2"
+            >
+              {TASK_STATUS_FILTERS.map((row, index) => (
                 <button
                   key={row.value}
                   type="button"
                   role="radio"
                   aria-checked={statusFilter === row.value}
+                  tabIndex={getTaskStatusFilterTabIndex(row.value)}
+                  ref={setTaskStatusFilterRef(index)}
+                  onKeyDown={(e) => onTaskStatusFilterKeyDown(e, index)}
                   onClick={() => setStatusFilter(row.value)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${RADIO_FOCUS} ${
                     statusFilter === row.value
                       ? 'bg-primary text-primary-foreground shadow-sm'
                       : 'bg-secondary text-secondary-foreground hover:bg-muted'
@@ -612,15 +725,23 @@ function TasksPageContent() {
           <span id="tasks-priority-heading" className="text-sm font-medium text-muted-foreground ml-0 sm:ml-6">
             Priority
           </span>
-          <div role="radiogroup" aria-labelledby="tasks-priority-heading" className="flex flex-wrap gap-2">
-            {priorityFilterOptions.map((p) => (
+          <div
+            role="radiogroup"
+            aria-labelledby="tasks-priority-heading"
+            aria-orientation="horizontal"
+            className="flex flex-wrap gap-2"
+          >
+            {PRIORITY_FILTER_VALUES.map((p, index) => (
               <button
                 key={p}
                 type="button"
                 role="radio"
                 aria-checked={priorityFilter === p}
+                tabIndex={getPriorityFilterTabIndex(p)}
+                ref={setPriorityFilterRef(index)}
+                onKeyDown={(e) => onPriorityFilterKeyDown(e, index)}
                 onClick={() => setPriorityFilter(p)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors focus-visible:outline-none ${
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${RADIO_FOCUS} ${
                   priorityFilter === p
                     ? 'bg-primary text-primary-foreground shadow-sm'
                     : 'bg-secondary text-secondary-foreground hover:bg-muted'
@@ -640,7 +761,7 @@ function TasksPageContent() {
             id="tasks-progress-sort"
             value={progressSort}
             onChange={(e) => setProgressSort(e.target.value as ProgressSort)}
-            className="rounded-lg border border-border bg-input px-3 py-1.5 text-sm text-foreground"
+            className={`rounded-lg border border-border bg-input px-3 py-1.5 text-sm text-foreground ${RADIO_FOCUS}`}
           >
             <option value="none">None</option>
             <option value="asc">Ascending</option>
@@ -659,7 +780,7 @@ function TasksPageContent() {
               onChange={(e) =>
                 setBoardProjectFilterId(e.target.value === 'all' ? 'all' : e.target.value)
               }
-              className="rounded-lg border border-border bg-input px-3 py-1.5 text-sm text-foreground min-w-[12rem]"
+              className={`rounded-lg border border-border bg-input px-3 py-1.5 text-sm text-foreground min-w-[12rem] ${RADIO_FOCUS}`}
             >
               <option value="all">All projects</option>
               {projectsSortedByName.map((p) => (
@@ -699,6 +820,7 @@ function TasksPageContent() {
             tasks={boardTasks}
             onStatusChange={handleKanbanStatusChange}
             onEdit={openEditModal}
+            onShowJobs={(id) => setTaskJobsPanelId(id)}
             savingTaskId={savingBoardTaskId}
             getPriorityStyle={getPriorityStyle}
             priorityCellLabel={priorityCellLabel}
@@ -708,110 +830,149 @@ function TasksPageContent() {
       )}
 
       <div
-        className={`rounded-xl border border-border/80 bg-card shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06] ${
+        className={`min-w-0 max-w-full overflow-hidden rounded-xl border border-border/80 bg-card shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06] ${
           viewMode === 'board' ? 'hidden' : ''
         }`}
       >
-        <div className="w-full">
-          <table className="w-full min-w-0 table-auto border-collapse text-sm">
+        <div className="max-w-full min-w-0 overflow-x-hidden">
+          <table className="w-full max-w-full table-fixed border-separate border-spacing-0 text-sm leading-snug">
             <caption className="sr-only">
-              Task list. Rows correspond to tasks; columns include title, project, assignment, progress,
-              and actions.
+              Task list. Rows correspond to tasks; columns include title, project, dependencies, jobs,
+              assignment, progress, budget, status, priority, and actions. The table fits the page width
+              without horizontal scrolling. Use Tab to move between filters, task title controls, and
+              action buttons. When a status, priority, or Board or Table layout control is focused, use
+              Left, Right, Home, and End to change the option. In Board view, use the Move task menu on
+              each card to change status without dragging.
             </caption>
             <thead>
-              <tr className="border-b border-border bg-muted/40">
+              <tr className="bg-muted/55 dark:bg-muted/40">
                 <th
                   scope="col"
-                  className="px-2 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground first:pl-3 sm:px-3 whitespace-normal break-words"
+                  className="min-w-0 w-[18%] border-b border-border px-2 py-3 text-left text-[10px] font-semibold uppercase leading-tight tracking-wide text-muted-foreground [overflow-wrap:break-word] [word-break:normal] first:pl-3 sm:px-2.5 sm:text-xs"
                 >
                   Task
                 </th>
                 <th
                   scope="col"
-                  className="px-2 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:px-3 whitespace-normal break-words"
+                  className="min-w-0 w-[12%] border-b border-border px-2 py-3 text-left text-[10px] font-semibold uppercase leading-tight tracking-wide text-muted-foreground [overflow-wrap:break-word] [word-break:normal] sm:px-2.5 sm:text-xs"
                 >
                   Project
                 </th>
                 <th
                   scope="col"
-                  className="px-2 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:px-3 whitespace-normal break-words"
+                  className="hidden min-w-0 w-[8%] border-b border-border px-2 py-3 text-left text-[10px] font-semibold uppercase leading-tight tracking-wide text-muted-foreground [overflow-wrap:break-word] [word-break:normal] xl:table-cell sm:px-2.5 sm:text-xs"
                 >
-                  Dependencies
+                  Deps
                 </th>
                 <th
                   scope="col"
-                  className="px-2 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:px-3 whitespace-normal break-words"
+                  className="hidden min-w-0 w-[7%] border-b border-border px-2 py-3 text-left text-[10px] font-semibold uppercase leading-tight tracking-wide text-muted-foreground [overflow-wrap:break-word] [word-break:normal] lg:table-cell sm:px-2.5 sm:text-xs"
                 >
-                  Assigned to
+                  Jobs
                 </th>
                 <th
                   scope="col"
-                  className="px-2 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:px-3 whitespace-normal break-words"
+                  className="min-w-0 w-[11%] border-b border-border px-2 py-3 text-left text-[10px] font-semibold uppercase leading-tight tracking-wide text-muted-foreground [overflow-wrap:break-word] [word-break:normal] sm:px-2.5 sm:text-xs"
+                >
+                  Assigned
+                </th>
+                <th
+                  scope="col"
+                  className="min-w-0 w-[9%] border-b border-border px-2 py-3 text-left text-[10px] font-semibold uppercase leading-tight tracking-wide text-muted-foreground [overflow-wrap:break-word] [word-break:normal] sm:px-2.5 sm:text-xs"
                 >
                   Progress
                 </th>
                 <th
                   scope="col"
-                  className="px-2 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:px-3 tabular-nums whitespace-normal break-words"
+                  className="min-w-0 w-[8%] border-b border-border px-2 py-3 text-right text-[10px] font-semibold uppercase leading-tight tracking-wide text-muted-foreground [overflow-wrap:break-word] [word-break:normal] sm:px-2.5 sm:text-xs tabular-nums"
                 >
-                  Spent budget
+                  Spent
                 </th>
                 <th
                   scope="col"
-                  className="px-2 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:px-3 whitespace-normal break-words"
+                  className="min-w-0 w-[9%] border-b border-border px-2 py-3 text-left text-[10px] font-semibold uppercase leading-tight tracking-wide text-muted-foreground [overflow-wrap:break-word] [word-break:normal] sm:px-2.5 sm:text-xs"
                 >
                   Status
                 </th>
                 <th
                   scope="col"
-                  className="px-2 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:px-3 whitespace-normal break-words"
+                  className="hidden min-w-0 w-[7%] border-b border-border px-2 py-3 text-left text-[10px] font-semibold uppercase leading-tight tracking-wide text-muted-foreground [overflow-wrap:break-word] [word-break:normal] xl:table-cell sm:px-2.5 sm:text-xs"
                 >
                   Priority
                 </th>
                 <th
                   scope="col"
-                  className="px-2 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground last:pr-3 sm:px-3 whitespace-normal break-words"
+                  className="min-w-0 w-[11%] border-b border-border px-2 py-3 text-center text-[10px] font-semibold uppercase leading-tight tracking-wide text-muted-foreground [overflow-wrap:break-word] [word-break:normal] last:pr-3 sm:px-2.5 sm:text-xs xl:w-[11%]"
                 >
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody>
-              {filteredTasks.map((task) => (
-                    <tr key={task.id} className="border-b border-border/60 transition-colors odd:bg-background even:bg-muted/[0.35] hover:bg-primary/[0.04]">
-                      <td className="px-2 py-3 align-top break-words first:pl-3 sm:px-3">
-                        <div className="flex items-start gap-2.5 min-w-0">
-                          <Clipboard size={17} className="mt-0.5 shrink-0 text-primary" aria-hidden />
-                          <span className="font-semibold text-foreground">{task.title}</span>
+              {filteredTasks.map((task, rowIndex) => (
+                    <tr
+                      key={task.id}
+                      className={`border-b border-border/50 transition-colors hover:bg-primary/[0.06] dark:hover:bg-primary/[0.08] ${
+                        rowIndex % 2 === 0 ? 'bg-card' : 'bg-muted/25'
+                      }`}
+                    >
+                      <td className="min-w-0 overflow-hidden border-b border-border/35 px-2 py-3 align-top first:pl-3 [overflow-wrap:break-word] [word-break:normal] sm:px-2.5">
+                        <div className="flex min-w-0 items-start gap-2">
+                          <Clipboard size={16} className="mt-0.5 shrink-0 text-primary" aria-hidden />
+                          <button
+                            type="button"
+                            onClick={() => setTaskJobsPanelId(task.id)}
+                            className="min-w-0 flex-1 text-left text-sm font-semibold leading-snug text-foreground rounded-md ring-offset-background transition-colors hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            title={task.title}
+                          >
+                            <span className="line-clamp-2 block w-full [overflow-wrap:break-word] [word-break:normal]">{task.title}</span>
+                          </button>
                         </div>
                       </td>
-                      <td className="px-2 py-3 align-top break-words sm:px-3">
-                        <div className="flex items-start gap-2 min-w-0">
-                          <Briefcase size={15} className="mt-0.5 shrink-0 text-primary/70" aria-hidden />
-                          <span className="text-sm font-medium text-foreground">{task.project}</span>
+                      <td className="min-w-0 overflow-hidden border-b border-border/35 px-2 py-3 align-top [overflow-wrap:break-word] [word-break:normal] sm:px-2.5">
+                        <div className="flex min-w-0 items-start gap-1.5">
+                          <Briefcase size={14} className="mt-0.5 shrink-0 text-primary/70" aria-hidden />
+                          <span className="line-clamp-2 text-sm font-medium leading-snug text-foreground" title={task.project}>
+                            {task.project}
+                          </span>
                         </div>
                       </td>
-                      <td className="px-2 py-3 align-top break-words sm:px-3">
+                      <td className="hidden min-w-0 overflow-hidden border-b border-border/35 px-2 py-3 align-top xl:table-cell sm:px-2.5">
                         {task.dependencyCount > 0 ? (
-                          <span className="inline-flex max-w-full items-center justify-center whitespace-normal rounded-full bg-blue-100 px-2 py-0.5 text-center text-xs font-medium leading-snug text-blue-900 dark:bg-blue-950/55 dark:text-blue-100">
-                            Depends on {task.dependencyCount} task(s)
+                          <span
+                            className="inline-flex max-w-full items-center rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-blue-900 dark:bg-blue-950/55 dark:text-blue-100 sm:text-xs"
+                            title={`Depends on ${task.dependencyCount} task(s)`}
+                          >
+                            {task.dependencyCount} dep{task.dependencyCount !== 1 ? 's' : ''}
                           </span>
                         ) : (
-                          <span className="inline-flex max-w-full items-center justify-center whitespace-normal rounded-full bg-muted px-2 py-0.5 text-center text-xs font-medium leading-snug text-foreground">
-                            No dependencies
-                          </span>
+                          <span className="text-xs text-muted-foreground">—</span>
                         )}
                       </td>
-                      <td className="px-2 py-3 align-top break-words sm:px-3">
-                        <div className="flex items-start gap-2 min-w-0">
-                          <Users size={15} className="mt-0.5 shrink-0 text-primary/80" aria-hidden />
-                          <span className="text-sm font-medium text-foreground">{task.assignedToLabel}</span>
+                      <td className="hidden min-w-0 overflow-hidden border-b border-border/35 px-2 py-3 align-top lg:table-cell sm:px-2.5">
+                        <button
+                          type="button"
+                          onClick={() => setTaskJobsPanelId(task.id)}
+                          disabled={isJobsLoading}
+                          className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/8 px-2 py-0.5 text-[10px] font-bold tabular-nums text-primary shadow-sm ring-1 ring-primary/10 transition-colors hover:bg-primary/15 hover:border-primary/35 disabled:pointer-events-none disabled:opacity-50 dark:bg-primary/10 dark:ring-primary/15 sm:text-xs"
+                          title="View jobs for this task"
+                        >
+                          <ClipboardList className="h-3 w-3 shrink-0 opacity-90" aria-hidden />
+                          {isJobsLoading ? '…' : task.jobCount}
+                        </button>
+                      </td>
+                      <td className="min-w-0 overflow-hidden border-b border-border/35 px-2 py-3 align-top [overflow-wrap:break-word] [word-break:normal] sm:px-2.5">
+                        <div className="flex min-w-0 items-start gap-1.5">
+                          <Users size={14} className="mt-0.5 shrink-0 text-primary/80" aria-hidden />
+                          <span className="line-clamp-2 text-sm font-medium leading-snug text-foreground" title={task.assignedToLabel}>
+                            {task.assignedToLabel}
+                          </span>
                         </div>
                       </td>
-                      <td className="px-2 py-3 align-top sm:px-3">
-                        <div className="w-full max-w-[5.5rem]">
-                          <div className="mb-1 flex items-center justify-between gap-2">
-                            <span className="text-xs font-semibold tabular-nums text-foreground">{task.progress}%</span>
+                      <td className="min-w-0 overflow-hidden border-b border-border/35 px-2 py-3 align-top sm:px-2.5">
+                        <div className="min-w-0">
+                          <div className="mb-1 flex items-center justify-between gap-1">
+                            <span className="text-[10px] font-semibold tabular-nums text-foreground sm:text-xs">{task.progress}%</span>
                           </div>
                           <div
                             role="progressbar"
@@ -829,44 +990,67 @@ function TasksPageContent() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-2 py-3 text-right align-top sm:px-3">
-                        <span className="tabular-nums text-sm font-semibold text-foreground">{formatDh(task.spentBudget)}</span>
+                      <td className="min-w-0 overflow-hidden border-b border-border/35 px-2 py-3 text-right align-top text-[11px] leading-tight tabular-nums [overflow-wrap:anywhere] sm:px-2.5 sm:text-xs">
+                        <span
+                          className="inline-block max-w-full text-right font-semibold text-foreground"
+                          title={formatDh(task.spentBudget)}
+                        >
+                          {new Intl.NumberFormat('fr-FR', {
+                            style: 'currency',
+                            currency: 'EUR',
+                            maximumFractionDigits: 0,
+                            notation: 'compact',
+                            compactDisplay: 'short',
+                          }).format(Number(task.spentBudget ?? 0))}
+                        </span>
                       </td>
-                      <td className="px-2 py-3 align-top sm:px-3">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className={getTaskStatusStyle(task.status)}>
+                      <td className="min-w-0 overflow-hidden border-b border-border/35 px-2 py-3 align-top sm:px-2.5">
+                        <div className="flex max-w-full flex-col items-stretch gap-1">
+                          <span
+                            className={cn(
+                              getTaskStatusStyle(task.status),
+                              '!inline-flex !max-w-full !whitespace-normal !px-1.5 !py-0.5 !text-[10px] !leading-tight [overflow-wrap:break-word] [word-break:normal] sm:!px-2 sm:!text-xs',
+                            )}
+                          >
                             {taskStatusLabel(task.status)}
                           </span>
                           {task.isLate ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-100">
+                            <span className="inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900 dark:bg-amber-500/20 dark:text-amber-100 sm:text-xs">
                               Late
                             </span>
                           ) : null}
                         </div>
                       </td>
-                      <td className="px-2 py-3 align-top sm:px-3">
-                        <span className={getPriorityStyle(task.priority)}>{priorityCellLabel(task.priority)}</span>
+                      <td className="hidden min-w-0 overflow-hidden border-b border-border/35 px-2 py-3 align-top xl:table-cell sm:px-2.5">
+                        <span
+                          className={cn(
+                            getPriorityStyle(task.priority),
+                            '!inline-flex !max-w-full !whitespace-normal !px-1.5 !py-0.5 !text-[10px] !leading-tight [overflow-wrap:break-word] [word-break:normal] sm:!px-2 sm:!text-xs',
+                          )}
+                        >
+                          {priorityCellLabel(task.priority)}
+                        </span>
                       </td>
-                      <td className="px-2 py-3 align-top break-words last:pr-3 sm:px-3">
-                        <div className="flex flex-wrap items-center justify-center gap-1.5">
+                      <td className="min-w-0 overflow-hidden border-b border-border/35 px-2 py-3 align-top last:pr-3 [overflow-wrap:break-word] [word-break:normal] sm:px-2.5">
+                        <div className="flex flex-nowrap items-center justify-center gap-1">
                           <button
                             type="button"
                             onClick={() => openEditModal(task.id)}
-                            className="inline-flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-[filter] hover:brightness-110 focus-visible:outline-none"
+                            className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-[filter] hover:brightness-110 sm:size-9 ${RADIO_FOCUS}`}
                             aria-label={`Edit task: ${task.title}`}
                             title="Edit"
                           >
-                            <Pencil size={15} aria-hidden />
+                            <Pencil size={14} aria-hidden className="sm:h-[15px] sm:w-[15px]" />
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleDeleteTask(task.id)}
-                            disabled={deleteTargetId === task.id}
-                            className="inline-flex size-9 items-center justify-center rounded-lg border border-destructive/35 bg-background text-destructive shadow-sm transition-colors hover:bg-destructive/10 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none"
+                            onClick={() => setTaskPendingDelete({ id: task.id, title: task.title })}
+                            disabled={isDeleteSubmitting && taskPendingDelete?.id === task.id}
+                            className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-destructive/35 bg-background text-destructive shadow-sm transition-colors hover:bg-destructive/10 disabled:pointer-events-none disabled:opacity-50 sm:size-9 ${RADIO_FOCUS}`}
                             aria-label={`Delete task: ${task.title}`}
                             title="Delete"
                           >
-                            <Trash2 size={15} aria-hidden />
+                            <Trash2 size={14} aria-hidden className="sm:h-[15px] sm:w-[15px]" />
                           </button>
                         </div>
                       </td>
@@ -894,6 +1078,16 @@ function TasksPageContent() {
           </div>
         )}
       </div>
+
+      <DeleteTaskDialog
+        open={taskPendingDelete !== null}
+        taskTitle={taskPendingDelete?.title ?? ''}
+        onConfirm={() => {
+          void handleConfirmDeleteTask();
+        }}
+        onCancel={() => setTaskPendingDelete(null)}
+        isDeleting={isDeleteSubmitting}
+      />
 
       <Dialog open={isModalOpen} onOpenChange={(open) => { if (!open) closeModal(); }}>
         <DialogContent
@@ -970,6 +1164,177 @@ function TasksPageContent() {
                   : 'Save'}
             </button>
           </footer>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={taskJobsPanelId !== null}
+        onOpenChange={(open) => {
+          if (!open) setTaskJobsPanelId(null);
+        }}
+      >
+        <DialogContent
+          showCloseButton={false}
+          className="flex max-h-[90vh] w-[calc(100vw-2rem)] max-w-lg flex-col gap-0 overflow-hidden rounded-2xl border border-border/80 bg-card p-0 shadow-xl ring-1 ring-black/[0.04] dark:ring-white/[0.06] sm:max-w-xl"
+        >
+          <header className="relative overflow-hidden border-b border-border/80 bg-gradient-to-br from-primary/[0.07] via-card to-accent/[0.05] px-5 py-5 dark:from-primary/[0.12] dark:via-card dark:to-accent/[0.06]">
+            <div
+              className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary/10 blur-2xl dark:bg-primary/20"
+              aria-hidden
+            />
+            <div className="relative flex items-start justify-between gap-3">
+              <div className="flex min-w-0 flex-1 items-start gap-3">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary shadow-sm ring-1 ring-primary/20 dark:bg-primary/20 dark:ring-primary/30">
+                  <ClipboardList className="h-5 w-5" aria-hidden />
+                </span>
+                <div className="min-w-0">
+                  <DialogTitle className="text-left text-base font-semibold tracking-tight text-foreground sm:text-lg">
+                    {panelTask ? panelTask.title : 'Task jobs'}
+                  </DialogTitle>
+                  <DialogDescription className="mt-1.5 text-left text-sm text-muted-foreground">
+                    {panelTask
+                      ? `${panelTask.project} · ${panelJobs.length} job${panelJobs.length === 1 ? '' : 's'}`
+                      : taskJobsPanelId
+                        ? 'Loading task…'
+                        : ''}
+                  </DialogDescription>
+                </div>
+              </div>
+              <DialogClose asChild>
+                <button
+                  type="button"
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-background/80 hover:text-foreground focus-visible:outline-none"
+                  aria-label="Close"
+                >
+                  <X size={18} aria-hidden />
+                </button>
+              </DialogClose>
+            </div>
+          </header>
+
+          <div className="max-h-[min(60vh,520px)] overflow-y-auto px-4 py-4 sm:px-5 [scrollbar-width:thin]">
+            {jobsError ? (
+              <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                Could not load jobs. Check that the API is reachable.
+              </p>
+            ) : isJobsLoading ? (
+              <p className="py-8 text-center text-sm text-muted-foreground" role="status">
+                Loading jobs…
+              </p>
+            ) : panelJobs.length === 0 ? (
+              <div className="flex flex-col items-center rounded-2xl border border-dashed border-border/80 bg-muted/25 px-6 py-12 text-center dark:bg-muted/10">
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-background shadow-md ring-1 ring-border/60 dark:bg-card">
+                  <Sparkles className="h-6 w-6 text-muted-foreground" aria-hidden />
+                </div>
+                <p className="text-sm font-semibold text-foreground">No jobs yet</p>
+                <p className="mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
+                  Create a job and link it to this task from the Jobs section.
+                </p>
+                <Link
+                  href="/jobs/create"
+                  className="mt-5 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+                >
+                  Create job
+                  <ExternalLink className="h-3.5 w-3.5 opacity-90" aria-hidden />
+                </Link>
+              </div>
+            ) : (
+              <ul className="flex flex-col gap-3">
+                {panelJobs.map((job) => {
+                  const pct =
+                    typeof job.progressPercentage === 'number'
+                      ? Math.min(100, Math.max(0, job.progressPercentage))
+                      : null;
+                  const resourceLabels = (job.assignedResources ?? [])
+                    .map((r) => r.name?.trim())
+                    .filter(Boolean) as string[];
+                  return (
+                    <li
+                      key={job._id}
+                      className="group relative overflow-hidden rounded-xl border border-border/70 bg-gradient-to-br from-card to-muted/20 p-4 shadow-sm transition-shadow hover:shadow-md dark:border-border/50 dark:from-card dark:to-muted/10"
+                    >
+                      <div className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-primary via-accent/80 to-primary/60 opacity-90" />
+                      <div className="relative space-y-3 pl-2">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <h3 className="min-w-0 flex-1 text-sm font-semibold leading-snug text-foreground">
+                            {job.title}
+                          </h3>
+                          <span
+                            className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${jobStatusPanelClass(job.status)}`}
+                          >
+                            {job.status}
+                          </span>
+                        </div>
+                        {job.description ? (
+                          <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                            {job.description}
+                          </p>
+                        ) : null}
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                          <span className="inline-flex items-center gap-1 font-medium text-foreground/90">
+                            <CalendarClock className="h-3.5 w-3.5 shrink-0 text-primary/80" aria-hidden />
+                            {formatJobDateTime(job.startTime)}
+                          </span>
+                          <span className="text-muted-foreground/70" aria-hidden>
+                            →
+                          </span>
+                          <span className="font-medium text-foreground/90 tabular-nums">
+                            {formatJobDateTime(job.endTime)}
+                          </span>
+                        </div>
+                        {pct !== null ? (
+                          <div>
+                            <div className="mb-1 flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                              <span>Job progress</span>
+                              <span className="tabular-nums">{pct}%</span>
+                            </div>
+                            <div
+                              className="h-1.5 overflow-hidden rounded-full bg-muted"
+                              role="progressbar"
+                              aria-valuenow={pct}
+                              aria-valuemin={0}
+                              aria-valuemax={100}
+                            >
+                              <div
+                                className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-[width]"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          </div>
+                        ) : null}
+                        {resourceLabels.length > 0 ? (
+                          <div className="flex flex-wrap gap-1.5 pt-0.5">
+                            {resourceLabels.slice(0, 6).map((name, i) => (
+                              <span
+                                key={`${job._id}-r-${i}`}
+                                className="rounded-md bg-background/90 px-2 py-0.5 text-[10px] font-medium text-foreground ring-1 ring-border/70 dark:bg-muted/50"
+                              >
+                                {name}
+                              </span>
+                            ))}
+                            {resourceLabels.length > 6 ? (
+                              <span className="rounded-md bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                +{resourceLabels.length - 6}
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : null}
+                        <div className="pt-1">
+                          <Link
+                            href={`/jobs/${job._id}/edit`}
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary transition-colors hover:text-primary/80"
+                          >
+                            Open job
+                            <ExternalLink className="h-3 w-3 opacity-80" aria-hidden />
+                          </Link>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </MainLayout>

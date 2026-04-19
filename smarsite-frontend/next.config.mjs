@@ -5,11 +5,19 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  transpilePackages: ["three", "@react-three/fiber", "@react-three/drei"],
   typescript: {
     ignoreBuildErrors: true,
   },
   images: {
     unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "image.pollinations.ai",
+        pathname: "/**",
+      },
+    ],
   },
   turbopack: {
     root: __dirname,

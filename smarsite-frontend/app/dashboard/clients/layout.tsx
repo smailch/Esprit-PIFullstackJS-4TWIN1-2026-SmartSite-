@@ -54,6 +54,9 @@ export default function ClientsMarketingLayout({
             <a href="#telegram" className={cn(navLink, "hidden md:inline")}>
               Telegram
             </a>
+            <Link href="/dashboard" className={cn(navLink, "hidden sm:inline")}>
+              Tableau de bord
+            </Link>
             <Link href="/home" className={navCta}>
               Espace équipe
             </Link>

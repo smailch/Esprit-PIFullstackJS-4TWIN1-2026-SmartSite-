@@ -47,12 +47,19 @@ async function apiFetch<T>(
   endpoint: string,
   options?: RequestInit
 ): Promise<T> {
+  const method = (options?.method ?? "GET").toUpperCase();
+  /** GET/HEAD : pas de `Content-Type: application/json` (certains serveurs / proxies réagissent mal). */
+  const baseHeaders: HeadersInit =
+    method === "GET" || method === "HEAD"
+      ? {}
+      : { "Content-Type": "application/json" };
+
   const res = await fetch(`${getApiBaseUrl()}${endpoint}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(options?.headers || {}),
-    },
     ...options,
+    headers: {
+      ...baseHeaders,
+      ...(options?.headers as Record<string, string> | undefined),
+    },
   });
 
   if (!res.ok) {
@@ -67,7 +74,18 @@ async function apiFetch<T>(
   }
 
   const text = await res.text();
-  return text ? JSON.parse(text) : (undefined as T);
+  if (!text) {
+    return undefined as T;
+  }
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new ApiError(
+      `Réponse JSON invalide (${endpoint}). Début du corps : ${text.slice(0, 120)}…`,
+      res.status,
+      { raw: text.slice(0, 500) },
+    );
+  }
 }
 
 
@@ -367,6 +385,84 @@ export function projectAssistantChat(
       body: JSON.stringify({ messages }),
     }
   );
+}
+
+export type DreamHouseStartPayload = {
+  description: string;
+  /** Hex #RRGGBB — couleur d’accent façade / menuiseries. */
+  accentColor: string;
+};
+
+export type DreamHouseStartResponse = {
+  /** Première URL (même contenu que `imageUrls[0]` lorsque le tableau est présent). */
+  imageUrl: string;
+  /** Plusieurs vues (angles) pour le même projet — absent sur d’anciennes réponses API. */
+  imageUrls?: string[];
+  taskId: string;
+};
+
+export type DreamHouseTripoStatusResponse = {
+  status: string;
+  modelGlbUrl?: string;
+  message?: string;
+  progress?: number;
+};
+
+export function startDreamHouse(
+  payload: DreamHouseStartPayload
+): Promise<DreamHouseStartResponse> {
+  return apiFetch<DreamHouseStartResponse>(`/dream-house/start`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getDreamHouseTripoTaskStatus(
+  taskId: string
+): Promise<DreamHouseTripoStatusResponse> {
+  /** Évite les réponses 304 / cache navigateur : le statut Tripo change à chaque poll. */
+  return apiFetch<DreamHouseTripoStatusResponse>(
+    `/dream-house/tripo-task/${encodeURIComponent(taskId)}`,
+    {
+      cache: "no-store",
+      headers: {
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache",
+      },
+    }
+  );
+}
+
+/** Télécharge le GLB via le backend (contournement CORS du CDN Tripo). */
+export async function fetchDreamHouseGlbBlob(remoteUrl: string): Promise<Blob> {
+  const res = await fetch(`${getApiBaseUrl()}/dream-house/model-glb`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url: remoteUrl }),
+  });
+  if (!res.ok) {
+    const info = await res.json().catch(() => null);
+    const msg = formatBackendMessage(info, res.status);
+    throw new ApiError(msg, res.status, info);
+  }
+  return res.blob();
+}
+
+/** Télécharge une image Pollinations via le backend (évite rate limit / erreurs multi-onglets). */
+export async function fetchDreamHousePollinationsBlob(
+  remoteUrl: string,
+): Promise<Blob> {
+  const res = await fetch(`${getApiBaseUrl()}/dream-house/pollinations-image`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url: remoteUrl }),
+  });
+  if (!res.ok) {
+    const info = await res.json().catch(() => null);
+    const msg = formatBackendMessage(info, res.status);
+    throw new ApiError(msg, res.status, info);
+  }
+  return res.blob();
 }
 
 
