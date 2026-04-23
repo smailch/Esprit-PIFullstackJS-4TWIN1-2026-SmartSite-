@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Building2, BarChart3, Users, Wallet, AlertCircle,
-  FileText, Menu, X, Home, Clipboard, Briefcase, UserPlus, ShieldAlert, MessageCircle,
-  Camera,
+  FileText, Menu, X, Home, Clipboard, Briefcase, UserPlus,TrendingUp, ShieldAlert, MessageCircle,
+  Camera,SplitSquareHorizontal,
   UserCircle,
   Wrench,
   Handshake,
@@ -29,7 +29,9 @@ const navigationItems = [
     icon: Camera,
     href: '/progress-photos',
   },
-
+  { id: 'documents', label: 'Documents', icon: FileText, href: '/documents' },
+  { id: 'Trend', label: 'Trend', icon: TrendingUp, href: '/trend' },
+  { id: 'compare', label: 'Compare', icon: SplitSquareHorizontal, href: '/compare' }, 
 ];
 
 // Item visible seulement pour Admin
