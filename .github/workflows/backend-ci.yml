@@ -1,4 +1,5 @@
 # CI NestJS — install, lint, tests (obligatoires), build
+# (modif. de ce fichier déclenche ce workflow seul; pour lancer front+back, modifier aussi frontend-ci.yml)
 name: Backend CI
 
 on:

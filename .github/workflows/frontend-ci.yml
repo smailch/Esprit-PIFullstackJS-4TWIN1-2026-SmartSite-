@@ -1,4 +1,5 @@
 # CI Next.js — install, lint, tests (obligatoires), build
+# (modif. de ce fichier déclenche ce workflow seul; pour lancer front+back, modifier aussi backend-ci.yml)
 name: Frontend CI
 
 on:

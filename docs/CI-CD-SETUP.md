@@ -10,7 +10,7 @@ Dépôt monorepo : **Backend** NestJS (`smartsite-backend/`), **Frontend** Next.
    Toute la branche `main` doit contenir le dossier `.github/workflows/`.
 
 2. **Premier run des workflows CI**  
-   Sur **GitHub → Actions**, vérifie que **Backend CI** et **Frontend CI** se sont lancés sur ton dernier push. Ouvre chaque run : tout doit être vert. Si un seul a tourné (fichiers modifiés seulement d’un côté), c’est normal à cause des filtres `paths` : refais un commit qui touche `smartsite-backend` et l’autre qui touche `smarsite-frontend` pour valider les deux, ou un commit qui modifie les deux dossiers.
+   Sur **GitHub → Actions**, vérifie que **Backend CI** et **Frontend CI** se sont lancés sur ton dernier push. Ouvre chaque run : tout doit être vert. Si un seul a tourné, c’est le filtre `paths` (ex. seul le backend modifié). Astuce : **un seul commit** qui modifie en même temps `.github/workflows/backend-ci.yml` *et* `.github/workflows/frontend-ci.yml` déclenche **les deux** (chaque workflow surveille son YAML). Sinon, touche un fichier sous `smartsite-backend/` et un autre sous `smarsite-frontend/`.
 
 3. **Variables (frontend)**  
    **Settings → Secrets and variables → Actions → Variables** (onglet *Repository variables*).  
