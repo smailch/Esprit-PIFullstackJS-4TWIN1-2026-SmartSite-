@@ -134,7 +134,53 @@ npm run build
 
 ---
 
-## 7. Livrables / captures demandées (à faire sur votre Jenkins)
+## 7. SonarQube dans le pipeline (`Jenkinsfile` racine)
+
+Le monorepo inclut **`sonar-project.properties`** (clé **`PiSmartSite`**, sources backend + frontend + `smartsite-ai-service`, LCOV fusionné `coverage/lcov.info`). Après les tests parallèles, Jenkins enchaîne :
+
+1. **`SonarQube — fusion LCOV`** : `node scripts/sonar-prep-lcov.mjs` (réutilise les `lcov.info` produits par Jest/Vitest, sans relancer les tests).
+2. **`SonarQube — analyse`** : `withSonarQubeEnv('SonarQube')` + `node scripts/sonar-scan.mjs` (CLI via `npx sonarqube-scanner`).
+3. **`SonarQube — Quality Gate`** : `waitForQualityGate abortPipeline: true` — **échec du build** si le Quality Gate est **FAILED** sur le serveur SonarQube.
+
+### 7.1 Serveur SonarQube
+
+- Installer SonarQube (Docker, VM ou [SonarCloud](https://sonarcloud.io) en adaptant URL + token).
+- Créer un **project** (ou laisser la première analyse le provisionner avec la clé `PiSmartSite`).
+- **My Account → Security** : générer un **token** d’analyse.
+
+### 7.2 Jenkins — plugins et configuration
+
+1. **Manage Jenkins → Plugins** : installer **SonarQube Scanner** (l’étape `waitForQualityGate` fait partie de ce plugin ; un plugin « Quality Gate » séparé n’est en général pas nécessaire).
+2. **Manage Jenkins → System → SonarQube servers** :
+   - **Name** : `SonarQube` (**identique** au libellé dans `withSonarQubeEnv('SonarQube')` du `Jenkinsfile`).
+   - **Server URL** : ex. `http://host.docker.internal:9000` si Sonar tourne sur la machine hôte et Jenkins en conteneur.
+   - **Server authentication token** : coller le token Sonar (credentials Jenkins).
+3. *(Option)* **Global Tool Configuration** : ajouter **SonarQube Scanner** si tu préfères le binaire Java au lieu de `npx` ; le dépôt utilise déjà `node scripts/sonar-scan.mjs` (pas d’obligation).
+
+### 7.3 Webhook (indispensable pour `waitForQualityGate`)
+
+Sans webhook, l’étape Quality Gate peut rester en attente ou ne pas refléter le bon statut.
+
+- Dans **SonarQube** : **Administration → Webhooks → Create** (ou webhook au niveau projet).
+- **URL** : `https://TON_JENKINS/sonarqube-webhook/` (URL affichée dans la config du serveur Sonar côté Jenkins).
+- Après chaque analyse, Sonar notifie Jenkins ; `waitForQualityGate` se débloque avec **PASSED** ou **FAILED**.
+
+### 7.4 Variables côté scanner
+
+`scripts/sonar-scan.mjs` lit **`SONAR_TOKEN`** ou **`SONAR_AUTH_TOKEN`** (injecté par `withSonarQubeEnv`) et **`SONAR_HOST_URL`** / **`SONARQUBE_HOST`**.
+
+### 7.5 Livrables « avant / après » (cours / rapport)
+
+| Livrable | Où le prendre |
+|----------|----------------|
+| Dashboard **avant** refactoring | Projet **PiSmartSite** dans SonarQube, onglet **Overview** (capture d’écran). |
+| Dashboard **après** | Même vue après correctifs ; comparer **Reliability**, **Security**, **Maintainability**, **Coverage**. |
+| **Quality Gate** | Bannière sur l’overview + onglet **Quality Gates** du projet. |
+| **Couverture** | Section **Measures → Coverage** (alignée sur `sonar.javascript.lcov.reportPaths`). |
+
+---
+
+## 8. Livrables / captures demandées (à faire sur votre Jenkins)
 
 | Livrable | Comment l’obtenir |
 |----------|-------------------|
@@ -145,7 +191,7 @@ npm run build
 
 ---
 
-## 8. Cohabitation avec GitHub Actions
+## 9. Cohabitation avec GitHub Actions
 
 Ce dépôt contient déjà des workflows dans `.github/workflows/`. Jenkins et GitHub Actions peuvent coexister (Jenkins pour un lab / serveur interne, GitHub pour le dépôt public). Les commandes npm et les chemins sont alignés entre les deux.
 
@@ -156,4 +202,5 @@ Ce dépôt contient déjà des workflows dans `.github/workflows/`. Jenkins et G
 - **4 jobs Jenkins** : 2 CI (`Jenkinsfile`) + 2 CD (`Jenkinsfile.cd`), chemins dans les sous-dossiers réels du repo.  
 - **Tests bloquants** + **couverture** via `npm run test:cov:ci`.  
 - **CD automatique** après CI stable grâce au déclencheur **Build after other projects**.  
-- **Jenkins Docker** : `docker-compose.jenkins.yml` à la racine.
+- **Jenkins Docker** : `docker-compose.jenkins.yml` à la racine.  
+- **SonarQube** : après CI, fusion LCOV + scan + **Quality Gate bloquant** (section 7).

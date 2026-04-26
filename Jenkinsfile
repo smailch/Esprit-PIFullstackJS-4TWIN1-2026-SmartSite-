@@ -8,6 +8,10 @@
  *
  * Le service IA : installation légère (FastAPI + Uvicorn + multipart) + compileall + import de main.
  * Torch / Ultralytics ne sont pas installés en CI (trop lourds) ; le code reste validé syntaxiquement.
+ *
+ * SonarQube (après les tests) : fusion LCOV → analyse via plugin Jenkins → Quality Gate bloquant.
+ * Jenkins : installer « SonarQube Scanner » ; Administration → SonarQube → serveur nommé exactement « SonarQube »
+ * (ou adapter withSonarQubeEnv ci-dessous) ; webhook Sonar → Jenkins pour waitForQualityGate. Voir docs/JENKINS-CI-CD.md.
  */
 pipeline {
   agent any
@@ -185,15 +189,45 @@ pipeline {
         }
       }
     }
+
+    stage('SonarQube — fusion LCOV') {
+      steps {
+        sh '''
+          set -e
+          echo ">>> Fusion smartsite-backend + smarsite-frontend → coverage/lcov.info (sonar-project.properties)"
+          node scripts/sonar-prep-lcov.mjs
+        '''
+      }
+    }
+
+    stage('SonarQube — analyse') {
+      steps {
+        withSonarQubeEnv('SonarQube') {
+          sh '''
+            set -e
+            echo ">>> Scanner monorepo (sonar-project.properties à la racine — backend, frontend, IA Python)"
+            node scripts/sonar-scan.mjs
+          '''
+        }
+      }
+    }
+
+    stage('SonarQube — Quality Gate') {
+      steps {
+        timeout(time: 15, unit: 'MINUTES') {
+          waitForQualityGate abortPipeline: true
+        }
+      }
+    }
   }
 
   post {
     always {
       junit testResults: 'reports/junit/**/*.xml', allowEmptyResults: true
-      archiveArtifacts artifacts: 'smartsite-backend/coverage/**/*,smarsite-frontend/coverage/**/*', allowEmptyArchive: true
+      archiveArtifacts artifacts: 'smartsite-backend/coverage/**/*,smarsite-frontend/coverage/**/*,coverage/lcov.info', allowEmptyArchive: true
     }
     success {
-      echo 'CI monorepo PiSmartSite : SUCCESS (backend + frontend + smartsite-ai-service).'
+      echo 'PiSmartSite : CI + SonarQube Quality Gate OK (voir dashboard serveur SonarQube).'
     }
     failure {
       echo 'CI monorepo : FAILURE — corriger le stage indiqué en erreur.'
