@@ -73,14 +73,14 @@ export class AuditLogService {
 
     // Sauvegarder le log
     const log = await this.auditLogModel.create({
-      action:    data.action,
-      email:     data.email,
-      ip:        data.ip || 'unknown',
+      action: data.action,
+      email: data.email,
+      ip: data.ip || 'unknown',
       userAgent: data.userAgent || 'unknown',
-      userId:    data.userId || null,
+      userId: data.userId || null,
       suspicious,
       reason,
-      read:      false,
+      read: false,
     });
 
     // Envoyer email si suspect
@@ -143,9 +143,9 @@ Respond with ONLY the alert message, no preamble.
       port: 587,
       secure: false,
       auth: {
-    user: 'ahmedallaya@gmail.com',      // ← direct
-    pass: 'geoxxnbjwubxpmbu',           // ← direct
-  },
+        user: 'ahmedallaya@gmail.com', // ← direct
+        pass: 'geoxxnbjwubxpmbu', // ← direct
+      },
     });
 
     await transporter.sendMail({
@@ -243,7 +243,10 @@ Respond with ONLY the summary report in English.
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 200,
       });
-      return response.choices[0]?.message?.content?.trim() || 'Unable to generate summary.';
+      return (
+        response.choices[0]?.message?.content?.trim() ||
+        'Unable to generate summary.'
+      );
     } catch {
       return 'Unable to generate AI summary at this time.';
     }

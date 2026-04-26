@@ -166,7 +166,10 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       }
       try {
         this.setBrowse(chatId, session.projectId);
-        const { text: msg, keyboard } = await this.buildProjectView(session.projectId, 0);
+        const { text: msg, keyboard } = await this.buildProjectView(
+          session.projectId,
+          0,
+        );
         await ctx.reply(msg, { reply_markup: keyboard });
       } catch (e: unknown) {
         if (e instanceof NotFoundException) {
@@ -194,9 +197,12 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           ...session.messages,
           { role: 'user', content: question },
         ];
-        const { reply } = await this.analysisAiService.chatProject(session.projectId, {
-          messages: nextMessages.slice(-MAX_CHAT_HISTORY_MESSAGES),
-        });
+        const { reply } = await this.analysisAiService.chatProject(
+          session.projectId,
+          {
+            messages: nextMessages.slice(-MAX_CHAT_HISTORY_MESSAGES),
+          },
+        );
 
         const withReply: ChatTurn[] = [
           ...nextMessages,
@@ -222,7 +228,8 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           'L’assistant est temporairement indisponible. Réessaie dans un instant.';
         if (e instanceof HttpException) {
           if (e.getStatus() === HttpStatus.TOO_MANY_REQUESTS) {
-            userMsg = 'Trop de demandes API. Patientes une minute puis réessaie.';
+            userMsg =
+              'Trop de demandes API. Patientes une minute puis réessaie.';
           }
         }
         await ctx.reply(userMsg);
@@ -284,7 +291,9 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
             '← Retour au projet',
             `${CB_BACK_PROJECT}${pid}`,
           );
-          await ctx.editMessageText(lines.join('\n'), { reply_markup: keyboard });
+          await ctx.editMessageText(lines.join('\n'), {
+            reply_markup: keyboard,
+          });
           return;
         }
 
@@ -315,7 +324,10 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
             return;
           }
           this.setBrowse(chatId, pid);
-          const { text: msg, keyboard } = await this.buildProjectView(pid, page);
+          const { text: msg, keyboard } = await this.buildProjectView(
+            pid,
+            page,
+          );
           await ctx.editMessageText(msg, { reply_markup: keyboard });
           return;
         }
@@ -350,7 +362,9 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           return;
         }
         this.logger.warn(e);
-        await ctx.editMessageText('Une erreur est survenue. Réessayez plus tard.');
+        await ctx.editMessageText(
+          'Une erreur est survenue. Réessayez plus tard.',
+        );
       }
     });
 
@@ -415,9 +429,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         : '(Aucune tâche pour ce projet.)';
 
     const footer =
-      totalPages > 1
-        ? `\n\nPage ${safePage + 1}/${totalPages}`
-        : '';
+      totalPages > 1 ? `\n\nPage ${safePage + 1}/${totalPages}` : '';
 
     const text = `${header}\n${body}${footer}`;
 
@@ -439,16 +451,10 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
 
     if (totalPages > 1) {
       if (safePage > 0) {
-        keyboard.text(
-          '◀ Préc.',
-          `${CB_PAGE}${projectId}:${safePage - 1}`,
-        );
+        keyboard.text('◀ Préc.', `${CB_PAGE}${projectId}:${safePage - 1}`);
       }
       if (safePage < totalPages - 1) {
-        keyboard.text(
-          'Suiv. ▶',
-          `${CB_PAGE}${projectId}:${safePage + 1}`,
-        );
+        keyboard.text('Suiv. ▶', `${CB_PAGE}${projectId}:${safePage + 1}`);
       }
     }
 
@@ -473,7 +479,10 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       };
     }
 
-    const totalPages = Math.max(1, Math.ceil(sorted.length / PROJECT_LIST_PAGE_SIZE));
+    const totalPages = Math.max(
+      1,
+      Math.ceil(sorted.length / PROJECT_LIST_PAGE_SIZE),
+    );
     const safePage = Math.min(page, totalPages - 1);
     const slice = sorted.slice(
       safePage * PROJECT_LIST_PAGE_SIZE,

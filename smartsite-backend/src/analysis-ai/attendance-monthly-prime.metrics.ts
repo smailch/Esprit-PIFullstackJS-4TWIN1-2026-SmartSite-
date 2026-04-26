@@ -10,7 +10,11 @@ function extractResourceId(resourceId: unknown): string {
 
 function displayNameFromResource(resourceId: unknown): string {
   if (resourceId && typeof resourceId === 'object') {
-    const o = resourceId as { firstName?: string; lastName?: string; name?: string };
+    const o = resourceId as {
+      firstName?: string;
+      lastName?: string;
+      name?: string;
+    };
     const full = `${o.firstName ?? ''} ${o.lastName ?? ''}`.trim();
     if (full) return full;
     if (o.name?.trim()) return o.name.trim();
@@ -38,7 +42,11 @@ function dateKeyUtcFromParts(year: number, month: number, day: number): string {
 }
 
 function dateKeyUtc(d: Date): string {
-  return dateKeyUtcFromParts(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
+  return dateKeyUtcFromParts(
+    d.getUTCFullYear(),
+    d.getUTCMonth() + 1,
+    d.getUTCDate(),
+  );
 }
 
 /** Points 0–30 : proportion de jours ouvrables présents sur le total de jours ouvrables du mois. */
@@ -96,7 +104,10 @@ export function aggregateMonthlyAttendanceByWorker(
   });
 
   const byWorkerDay = new Map<string, Map<string, 'present' | 'absent'>>();
-  const hoursByWorker = new Map<string, { total: number; presentDays: number }>();
+  const hoursByWorker = new Map<
+    string,
+    { total: number; presentDays: number }
+  >();
 
   for (const row of monthRecords) {
     const rid = extractResourceId(row.resourceId);
@@ -105,18 +116,23 @@ export function aggregateMonthlyAttendanceByWorker(
 
     const dk = dateKeyUtc(new Date(row.date));
     if (!byWorkerDay.has(rid)) byWorkerDay.set(rid, new Map());
-    byWorkerDay.get(rid)!.set(dk, row.status === 'present' ? 'present' : 'absent');
+    byWorkerDay
+      .get(rid)!
+      .set(dk, row.status === 'present' ? 'present' : 'absent');
 
     if (row.status === 'present') {
       const hb = hoursBetween(row.checkIn, row.checkOut);
-      if (!hoursByWorker.has(rid)) hoursByWorker.set(rid, { total: 0, presentDays: 0 });
+      if (!hoursByWorker.has(rid))
+        hoursByWorker.set(rid, { total: 0, presentDays: 0 });
       const agg = hoursByWorker.get(rid)!;
       agg.presentDays += 1;
       if (hb != null) agg.total += hb;
     }
   }
 
-  const resourceIds = [...new Set(monthRecords.map((r) => extractResourceId(r.resourceId)))];
+  const resourceIds = [
+    ...new Set(monthRecords.map((r) => extractResourceId(r.resourceId))),
+  ];
   if (resourceIds.length === 0) return [];
 
   const joursOuvrables = countWeekdaysInMonth(year, month);
@@ -125,7 +141,9 @@ export function aggregateMonthlyAttendanceByWorker(
   const out: WorkerMonthlyAttendanceMetrics[] = [];
 
   for (const resourceId of resourceIds) {
-    const firstRow = monthRecords.find((r) => extractResourceId(r.resourceId) === resourceId);
+    const firstRow = monthRecords.find(
+      (r) => extractResourceId(r.resourceId) === resourceId,
+    );
     const displayName = displayNameFromResource(firstRow?.resourceId);
 
     let presentWeekdays = 0;
@@ -152,8 +170,10 @@ export function aggregateMonthlyAttendanceByWorker(
         ? Math.round((heuresTotales / hAgg.presentDays) * 100) / 100
         : null;
 
-    const totalJoursOuvrablesComptes = presentWeekdays + absentPointes + sansPointage;
-    const tauxPresence = joursOuvrables > 0 ? presentWeekdays / joursOuvrables : 0;
+    const totalJoursOuvrablesComptes =
+      presentWeekdays + absentPointes + sansPointage;
+    const tauxPresence =
+      joursOuvrables > 0 ? presentWeekdays / joursOuvrables : 0;
 
     out.push({
       resourceId,

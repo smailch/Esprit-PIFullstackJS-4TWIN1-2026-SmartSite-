@@ -1,4 +1,12 @@
-import { Controller, Post, Get, Body, Param, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Param,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { MessagingService } from './messaging.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -12,7 +20,8 @@ export class MessagingController {
   @Post('ask')
   async askQuestion(
     @Request() req,
-    @Body() body: {
+    @Body()
+    body: {
       question: string;
       conversationId: string;
       sessionHistory: Array<{ role: string; content: string }>;
@@ -57,7 +66,10 @@ export class MessagingController {
     @Request() req,
     @Param('conversationId') conversationId: string,
   ) {
-    return this.messagingService.getClientConversation(req.user.sub, conversationId);
+    return this.messagingService.getClientConversation(
+      req.user.sub,
+      conversationId,
+    );
   }
 
   // ── Vérifier réponse Director ─────────────────────────────────

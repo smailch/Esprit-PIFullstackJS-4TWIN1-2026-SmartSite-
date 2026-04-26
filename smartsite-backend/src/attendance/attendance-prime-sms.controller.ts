@@ -12,7 +12,9 @@ import { AttendancePrimeSmsService } from './attendance-prime-sms.service';
  */
 @Controller('attendance')
 export class AttendancePrimeSmsController {
-  constructor(private readonly attendancePrimeSmsService: AttendancePrimeSmsService) {}
+  constructor(
+    private readonly attendancePrimeSmsService: AttendancePrimeSmsService,
+  ) {}
 
   /**
    * POST /attendance/job/:jobId/prime-sms/top3?year=2026&month=4
@@ -33,8 +35,15 @@ export class AttendancePrimeSmsController {
       monthStr !== undefined && monthStr !== ''
         ? Number.parseInt(monthStr, 10)
         : now.getUTCMonth() + 1;
-    if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) {
-      throw new BadRequestException('Invalid year and month parameters (month 1–12).');
+    if (
+      !Number.isFinite(year) ||
+      !Number.isFinite(month) ||
+      month < 1 ||
+      month > 12
+    ) {
+      throw new BadRequestException(
+        'Invalid year and month parameters (month 1–12).',
+      );
     }
     return this.attendancePrimeSmsService.sendMotivationSmsToTopThreePrimeEarners(
       jobId,
@@ -62,9 +71,20 @@ export class AttendancePrimeSmsController {
       monthStr !== undefined && monthStr !== ''
         ? Number.parseInt(monthStr, 10)
         : now.getUTCMonth() + 1;
-    if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) {
-      throw new BadRequestException('Invalid year and month parameters (month 1–12).');
+    if (
+      !Number.isFinite(year) ||
+      !Number.isFinite(month) ||
+      month < 1 ||
+      month > 12
+    ) {
+      throw new BadRequestException(
+        'Invalid year and month parameters (month 1–12).',
+      );
     }
-    return this.attendancePrimeSmsService.queueTopThreePrimeForInvoice(jobId, year, month);
+    return this.attendancePrimeSmsService.queueTopThreePrimeForInvoice(
+      jobId,
+      year,
+      month,
+    );
   }
 }

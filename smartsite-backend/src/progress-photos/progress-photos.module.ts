@@ -17,6 +17,5 @@ import { AuthModule } from '../auth/auth.module';
   ],
   controllers: [ProgressPhotosController],
   providers: [ProgressPhotosService, AiEstimationService],
-  
 })
 export class ProgressPhotosModule {}

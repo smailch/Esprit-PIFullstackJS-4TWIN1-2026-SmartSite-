@@ -21,7 +21,9 @@ export const attendanceBonusAnalysisPayloadSchema = z.object({
   confiance: z.number().min(0).max(1),
 });
 
-export type AttendanceBonusAnalysisPayload = z.infer<typeof attendanceBonusAnalysisPayloadSchema>;
+export type AttendanceBonusAnalysisPayload = z.infer<
+  typeof attendanceBonusAnalysisPayloadSchema
+>;
 export type TravailleurBonusRow = z.infer<typeof travailleurBonusSchema>;
 
 export const attendanceBonusInsightsResponseSchema = z.object({
@@ -31,13 +33,12 @@ export const attendanceBonusInsightsResponseSchema = z.object({
   mois: z.number().int().min(1).max(12),
   generatedAt: z.string().min(1),
   source: z.enum(['groq', 'fallback']),
-  reglePrime:
-    z
-      .string()
-      .min(1)
-      .describe(
-        'Rappel du barème : points sur jours ouvrables, week-ends exclus ; 30→50 DT, 29→30 DT, 28→10 DT',
-      ),
+  reglePrime: z
+    .string()
+    .min(1)
+    .describe(
+      'Rappel du barème : points sur jours ouvrables, week-ends exclus ; 30→50 DT, 29→30 DT, 28→10 DT',
+    ),
   backendMetrics: z.array(
     z.object({
       resourceId: z.string(),
@@ -68,4 +69,6 @@ export const attendanceBonusInsightsResponseSchema = z.object({
   }),
 });
 
-export type AttendanceBonusInsightsResponse = z.infer<typeof attendanceBonusInsightsResponseSchema>;
+export type AttendanceBonusInsightsResponse = z.infer<
+  typeof attendanceBonusInsightsResponseSchema
+>;

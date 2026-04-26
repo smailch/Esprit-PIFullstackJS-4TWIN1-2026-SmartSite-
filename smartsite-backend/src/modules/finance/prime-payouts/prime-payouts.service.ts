@@ -6,13 +6,19 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Human, HumanDocument } from '../../../human-resources/schemas/human.schema';
+import {
+  Human,
+  HumanDocument,
+} from '../../../human-resources/schemas/human.schema';
 import {
   SmsService,
   getErrorMessageForSms,
   normalizeEmployeePhoneForSms,
 } from '../../../sms/sms.service';
-import { PrimePayout, PrimePayoutDocument } from './schemas/prime-payout.schema';
+import {
+  PrimePayout,
+  PrimePayoutDocument,
+} from './schemas/prime-payout.schema';
 
 export type UpsertSmsPrimeInput = {
   jobId: string;
@@ -96,10 +102,7 @@ export class PrimePayoutsService {
   async findAll(status?: string): Promise<PrimePayoutDocument[]> {
     const q: Record<string, string> = {};
     if (status === 'PENDING' || status === 'PROCESSED') q.status = status;
-    return this.primePayoutModel
-      .find(q)
-      .sort({ createdAt: -1 })
-      .exec();
+    return this.primePayoutModel.find(q).sort({ createdAt: -1 }).exec();
   }
 
   async setStatus(
@@ -115,7 +118,9 @@ export class PrimePayoutsService {
     if (status === 'PROCESSED' && !existing.smsNotifiedAt) {
       const blocker = this.smsService.getSmsSendBlocker();
       if (blocker) throw new BadRequestException(blocker);
-      const human = await this.humanModel.findById(existing.humanResourceId).exec();
+      const human = await this.humanModel
+        .findById(existing.humanResourceId)
+        .exec();
       if (!human) {
         throw new BadRequestException('Worker record not found');
       }
@@ -126,7 +131,8 @@ export class PrimePayoutsService {
         );
       }
       const firstName = human.firstName?.trim() || 'Hello';
-      const employeeName = `${human.firstName ?? ''} ${human.lastName ?? ''}`.trim();
+      const employeeName =
+        `${human.firstName ?? ''} ${human.lastName ?? ''}`.trim();
       const body = buildPrimeMotivationMessageBody(
         firstName,
         existing.jobTitle,

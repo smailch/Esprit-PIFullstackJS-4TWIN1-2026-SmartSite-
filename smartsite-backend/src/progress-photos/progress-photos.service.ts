@@ -1,8 +1,16 @@
-import { forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  forwardRef,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ProgressPhoto, ProgressPhotoDocument } from './progress-photos.schema';
-import { CreateProgressPhotoDto, ValidatePhotoDto } from './dto/create-progress-photo.dto';
+import {
+  CreateProgressPhotoDto,
+  ValidatePhotoDto,
+} from './dto/create-progress-photo.dto';
 import { ProjectsService } from '../projects/projects.service';
 
 @Injectable()
@@ -19,7 +27,9 @@ export class ProgressPhotosService {
   }
 
   // POST — Upload une photo
-  async create(createProgressPhotoDto: CreateProgressPhotoDto): Promise<ProgressPhoto> {
+  async create(
+    createProgressPhotoDto: CreateProgressPhotoDto,
+  ): Promise<ProgressPhoto> {
     const newPhoto = new this.progressPhotoModel(createProgressPhotoDto);
     return newPhoto.save();
   }
@@ -32,7 +42,10 @@ export class ProgressPhotosService {
   /**
    * Client : uniquement les photos des projets dont il est le `clientId`. Staff : toutes.
    */
-  async findAllForRequestUser(u: { sub: string; roleName?: string }): Promise<ProgressPhoto[]> {
+  async findAllForRequestUser(u: {
+    sub: string;
+    roleName?: string;
+  }): Promise<ProgressPhoto[]> {
     if (!this.isClientRole(u.roleName)) {
       return this.findAll();
     }
@@ -118,7 +131,10 @@ export class ProgressPhotosService {
   }
 
   // PATCH — Valider ou rejeter une photo (superviseur)
-  async validate(id: string, validatePhotoDto: ValidatePhotoDto): Promise<ProgressPhoto> {
+  async validate(
+    id: string,
+    validatePhotoDto: ValidatePhotoDto,
+  ): Promise<ProgressPhoto> {
     const updated = await this.progressPhotoModel
       .findByIdAndUpdate(id, validatePhotoDto, { new: true })
       .exec();
@@ -134,18 +150,27 @@ export class ProgressPhotosService {
   }
 
   // Update photo details
-async update(id: string, updateData: { caption?: string; estimatedProgress?: number }): Promise<ProgressPhoto> {
-  const updated = await this.progressPhotoModel
-    .findByIdAndUpdate(id, updateData, { new: true })
-    .exec();
-  if (!updated) throw new NotFoundException(`Photo #${id} not found`);
-  return updated;
-}
+  async update(
+    id: string,
+    updateData: { caption?: string; estimatedProgress?: number },
+  ): Promise<ProgressPhoto> {
+    const updated = await this.progressPhotoModel
+      .findByIdAndUpdate(id, updateData, { new: true })
+      .exec();
+    if (!updated) throw new NotFoundException(`Photo #${id} not found`);
+    return updated;
+  }
 
   // GET — Dernier avancement estimé d'un projet
-  async getLatestProgress(projectId: string): Promise<{ projectId: string; latestProgress: number }> {
+  async getLatestProgress(
+    projectId: string,
+  ): Promise<{ projectId: string; latestProgress: number }> {
     const latestPhoto = await this.progressPhotoModel
-      .findOne({ projectId, validationStatus: 'approved', estimatedProgress: { $exists: true } })
+      .findOne({
+        projectId,
+        validationStatus: 'approved',
+        estimatedProgress: { $exists: true },
+      })
       .sort({ takenAt: -1 })
       .exec();
 

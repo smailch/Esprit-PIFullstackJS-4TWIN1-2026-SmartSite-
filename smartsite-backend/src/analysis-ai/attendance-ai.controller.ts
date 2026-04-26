@@ -1,4 +1,10 @@
-import { BadRequestException, Controller, Param, Post, Query } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { AnalysisAiService } from './analysis-ai.service';
 import type { AttendanceBonusInsightsResponse } from './attendance-bonus.zod';
 
@@ -22,12 +28,28 @@ export class AttendanceAiController {
     @Query('month') monthStr?: string,
   ): Promise<AttendanceBonusInsightsResponse> {
     const now = new Date();
-    const year = yearStr !== undefined && yearStr !== '' ? Number.parseInt(yearStr, 10) : now.getUTCFullYear();
+    const year =
+      yearStr !== undefined && yearStr !== ''
+        ? Number.parseInt(yearStr, 10)
+        : now.getUTCFullYear();
     const month =
-      monthStr !== undefined && monthStr !== '' ? Number.parseInt(monthStr, 10) : now.getUTCMonth() + 1;
-    if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) {
-      throw new BadRequestException('Invalid year and month parameters (month must be 1–12).');
+      monthStr !== undefined && monthStr !== ''
+        ? Number.parseInt(monthStr, 10)
+        : now.getUTCMonth() + 1;
+    if (
+      !Number.isFinite(year) ||
+      !Number.isFinite(month) ||
+      month < 1 ||
+      month > 12
+    ) {
+      throw new BadRequestException(
+        'Invalid year and month parameters (month must be 1–12).',
+      );
     }
-    return this.analysisAiService.generateAttendanceBonusInsights(jobId, year, month);
+    return this.analysisAiService.generateAttendanceBonusInsights(
+      jobId,
+      year,
+      month,
+    );
   }
 }

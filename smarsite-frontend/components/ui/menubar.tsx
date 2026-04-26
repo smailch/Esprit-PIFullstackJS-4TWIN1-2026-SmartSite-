@@ -6,6 +6,13 @@ import { CheckIcon, ChevronRightIcon, CircleIcon } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
+import {
+  SLATE_RADIX_CHECKBOX_ITEM,
+  SLATE_RADIX_ITEM_WITH_VARIANTS,
+  SLATE_RADIX_RADIO_ITEM,
+  SLATE_RADIX_SUB_TRIGGER,
+} from './slate-radix-menu-classes'
+
 function Menubar({
   className,
   ...props
@@ -102,10 +109,7 @@ function MenubarItem({
       data-slot="menubar-item"
       data-inset={inset}
       data-variant={variant}
-      className={cn(
-        "relative flex cursor-default select-none items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-200 outline-hidden focus:bg-white/[0.08] focus:text-slate-50 data-[variant=destructive]:text-red-400 data-[variant=destructive]:focus:bg-red-500/15 data-[variant=destructive]:focus:text-red-300 data-[variant=destructive]:*:[svg]:!text-red-400 [&_svg:not([class*='text-'])]:text-slate-400 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[inset]:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        className,
-      )}
+      className={cn(SLATE_RADIX_ITEM_WITH_VARIANTS, className)}
       {...props}
     />
   )
@@ -120,10 +124,7 @@ function MenubarCheckboxItem({
   return (
     <MenubarPrimitive.CheckboxItem
       data-slot="menubar-checkbox-item"
-      className={cn(
-        "relative flex cursor-default select-none items-center gap-2 rounded-lg py-1.5 pr-2 pl-8 text-sm text-slate-200 outline-hidden focus:bg-white/[0.08] focus:text-slate-50 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        className,
-      )}
+      className={cn(SLATE_RADIX_CHECKBOX_ITEM, className)}
       checked={checked}
       {...props}
     >
@@ -145,10 +146,7 @@ function MenubarRadioItem({
   return (
     <MenubarPrimitive.RadioItem
       data-slot="menubar-radio-item"
-      className={cn(
-        "relative flex cursor-default select-none items-center gap-2 rounded-lg py-1.5 pr-2 pl-8 text-sm text-slate-200 outline-hidden focus:bg-white/[0.08] focus:text-slate-50 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        className,
-      )}
+      className={cn(SLATE_RADIX_RADIO_ITEM, className)}
       {...props}
     >
       <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
@@ -228,10 +226,7 @@ function MenubarSubTrigger({
     <MenubarPrimitive.SubTrigger
       data-slot="menubar-sub-trigger"
       data-inset={inset}
-      className={cn(
-        'flex cursor-default select-none items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-200 outline-none focus:bg-white/[0.08] focus:text-slate-50 data-[state=open]:bg-white/[0.08] data-[state=open]:text-slate-50 [&_svg:not([class*='text-'])]:text-slate-400 data-[inset]:pl-8',
-        className,
-      )}
+      className={cn(SLATE_RADIX_SUB_TRIGGER, className)}
       {...props}
     >
       {children}

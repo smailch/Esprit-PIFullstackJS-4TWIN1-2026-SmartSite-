@@ -8,7 +8,6 @@ import {
 } from 'class-validator';
 
 export class CreateInvoiceDto {
-
   @IsMongoId()
   @IsNotEmpty()
   projectId: string;

@@ -3,7 +3,10 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { DocumentsController } from './documents.controller';
 import { DocumentsService } from './documents.service';
 import { ProjectDocument, ProjectDocumentSchema } from './documents.schema';
-import { DocumentVersion, DocumentVersionSchema } from './document-versions.schema';
+import {
+  DocumentVersion,
+  DocumentVersionSchema,
+} from './document-versions.schema';
 
 @Module({
   imports: [

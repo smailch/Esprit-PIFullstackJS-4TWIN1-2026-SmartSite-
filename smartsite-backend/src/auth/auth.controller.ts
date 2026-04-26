@@ -1,4 +1,12 @@
-import { Controller, Post, Body, Get, Request, UnauthorizedException, Req } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Request,
+  UnauthorizedException,
+  Req,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -15,7 +23,8 @@ export class AuthController {
   @Post('login')
   login(@Body() body: any, @Req() req: any) {
     // ✅ Récupérer IP et UserAgent
-    const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+    const ip =
+      req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
     const userAgent = req.headers['user-agent'] || 'unknown';
     return this.authService.login(body.email, body.password, { ip, userAgent });
   }
@@ -29,9 +38,13 @@ export class AuthController {
 
   // ── Face Login Auto ───────────────────────────────────────────
   @Post('face-login-auto')
-  async faceLoginAuto(@Body('descriptor') descriptor: number[], @Req() req: any) {
+  async faceLoginAuto(
+    @Body('descriptor') descriptor: number[],
+    @Req() req: any,
+  ) {
     // ✅ Récupérer IP et UserAgent
-    const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+    const ip =
+      req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
     const userAgent = req.headers['user-agent'] || 'unknown';
     return this.authService.faceLoginAuto(descriptor, { ip, userAgent });
   }

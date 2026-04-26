@@ -1,0 +1,84 @@
+# CI NestJS — install, lint, tests (obligatoires), build
+name: Backend CI
+
+on:
+  push:
+    branches: [main, master, develop]
+    paths:
+      - "smartsite-backend/**"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    branches: [main, master, develop]
+    paths:
+      - "smartsite-backend/**"
+      - ".github/workflows/backend-ci.yml"
+
+concurrency:
+  group: backend-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22"
+  # Logs explicites (CI)
+  CI: "true"
+  HUSKY: "0"
+
+defaults:
+  run:
+    working-directory: smartsite-backend
+
+jobs:
+  build-and-test:
+    name: Install · Lint · Test · Build
+    runs-on: ubuntu-latest
+    env:
+      # Remplace cross-env pour jest-junit (même relatif qu’avant, depuis smartsite-backend)
+      JEST_JUNIT_OUTPUT_DIR: ../reports/junit
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: smartsite-backend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          echo ">>> npm ci (backend)"
+          npm ci
+
+      # Le dépôt a encore beaucoup de violations ESLint : on exécute le lint mais on ne
+      # bloque pas le merge (tests + build restent les garde-fous). Retirez continue-on-error
+      # une fois le backend entièrement conforme.
+      - name: ESLint
+        id: backend-eslint
+        continue-on-error: true
+        run: |
+          echo ">>> npm run lint:ci (signalement qualité — ne bloque pas le job, voir docs/CI-CD-SETUP.md)"
+          npm run lint:ci
+
+      - name: Avertissement si ESLint a échoué
+        if: steps.backend-eslint.outcome == 'failure'
+        run: 'echo "::warning::ESLint a signalé des erreurs. Les tests et le build sont tout de même exigés."'
+
+      - name: Unit tests
+        run: |
+          echo ">>> npm run test:ci (Jest, échec = pipeline rouge)"
+          mkdir -p ../reports/junit
+          npm run test:ci
+
+      - name: Build Nest
+        run: |
+          echo ">>> npm run build (nest build)"
+          npm run build
+
+      - name: JUnit report (optionnel)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-junit
+          path: reports/junit
+          if-no-files-found: ignore

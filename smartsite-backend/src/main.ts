@@ -3,7 +3,6 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import * as bodyParser from 'body-parser';
 
-
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
@@ -41,7 +40,10 @@ async function bootstrap() {
   ];
   const corsEnv = process.env.CORS_ORIGINS;
   const extra = corsEnv
-    ? corsEnv.split(',').map((s) => s.trim()).filter(Boolean)
+    ? corsEnv
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
     : [];
   app.enableCors({
     origin: [...new Set([...devOrigins, ...extra])],

@@ -152,7 +152,9 @@ export class DreamHouseService {
       Number.isFinite(dto.terrainM2) &&
       dto.terrainM2 >= 1
     ) {
-      parts.push(`Plot ~${dto.terrainM2} m² — yard and driveway visible as appropriate.`);
+      parts.push(
+        `Plot ~${dto.terrainM2} m² — yard and driveway visible as appropriate.`,
+      );
     }
     return parts.length ? ` ${parts.join(' ')}` : '';
   }
@@ -181,7 +183,7 @@ export class DreamHouseService {
       );
     }
     const hintStr = hints.length ? ` ${hints.join(' ')}` : '';
-    let p = `Residential house 3D model, clean geometry, coherent architecture, high detail; exterior accent color ${hex} on walls trim shutters or door where appropriate:${hintStr} ${brief}`;
+    const p = `Residential house 3D model, clean geometry, coherent architecture, high detail; exterior accent color ${hex} on walls trim shutters or door where appropriate:${hintStr} ${brief}`;
     if (p.length > TRIPO_PROMPT_MAX) {
       return `${p.slice(0, TRIPO_PROMPT_MAX - 3)}...`;
     }
@@ -464,11 +466,14 @@ export class DreamHouseService {
         return null;
       }
       const text =
-        data.candidates[0]?.content?.parts?.find((p) => typeof p.text === 'string')
-          ?.text ?? '';
+        data.candidates[0]?.content?.parts?.find(
+          (p) => typeof p.text === 'string',
+        )?.text ?? '';
       const normalized = this.normalizeRefinedTripoPrompt(text);
       if (normalized.length < GEMINI_REFINED_PROMPT_MIN) {
-        this.logger.warn('Gemini refine: réponse trop courte, prompt Tripo par défaut.');
+        this.logger.warn(
+          'Gemini refine: réponse trop courte, prompt Tripo par défaut.',
+        );
         return null;
       }
       this.logger.log(
@@ -511,7 +516,7 @@ export class DreamHouseService {
   }
 
   private getTripoKey(): string {
-    let raw = process.env.TRIPO_API_KEY;
+    const raw = process.env.TRIPO_API_KEY;
     if (raw == null) {
       throw new ServiceUnavailableException(
         'TRIPO_API_KEY is not configured on the server.',
@@ -686,7 +691,10 @@ export class DreamHouseService {
   }
 
   private looksLikeHtmlBuffer(buf: Buffer): boolean {
-    const head = buf.subarray(0, Math.min(80, buf.length)).toString('utf8').trimStart();
+    const head = buf
+      .subarray(0, Math.min(80, buf.length))
+      .toString('utf8')
+      .trimStart();
     const lower = head.toLowerCase();
     return lower.startsWith('<!') || lower.startsWith('<html');
   }
@@ -700,7 +708,11 @@ export class DreamHouseService {
       if (s === 429 || s === 502 || s === 503 || s === 504 || s === 408) {
         return true;
       }
-      if (e.code === 'ECONNABORTED' || e.code === 'ECONNRESET' || e.code === 'ETIMEDOUT') {
+      if (
+        e.code === 'ECONNABORTED' ||
+        e.code === 'ECONNRESET' ||
+        e.code === 'ETIMEDOUT'
+      ) {
         return true;
       }
     }
@@ -733,7 +745,7 @@ export class DreamHouseService {
       );
     }
     const data = res.data;
-    if (data == null || (data as ArrayBuffer).byteLength === 0) {
+    if (data == null || data.byteLength === 0) {
       throw new BadRequestException('Image Pollinations vide ou introuvable.');
     }
     const buffer = Buffer.from(data);
@@ -759,7 +771,11 @@ export class DreamHouseService {
   }> {
     const url = this.assertPollinationsImageUrl(rawUrl);
     let lastErr: unknown;
-    for (let attempt = 1; attempt <= POLLINATIONS_DOWNLOAD_MAX_ATTEMPTS; attempt++) {
+    for (
+      let attempt = 1;
+      attempt <= POLLINATIONS_DOWNLOAD_MAX_ATTEMPTS;
+      attempt++
+    ) {
       try {
         return await this.fetchPollinationsImageOnce(url);
       } catch (e) {
@@ -800,7 +816,7 @@ export class DreamHouseService {
         },
       });
       const data = res.data;
-      if (data == null || (data as ArrayBuffer).byteLength === 0) {
+      if (data == null || data.byteLength === 0) {
         throw new BadRequestException('Fichier GLB vide ou introuvable.');
       }
       return Buffer.from(data);
@@ -825,7 +841,8 @@ export class DreamHouseService {
    * Désactiver : `DREAM_HOUSE_TRIPO_IMAGE_TO_MODEL=false` (repli `text_to_model` uniquement).
    */
   private isTripoImageToModelEnabled(): boolean {
-    const v = process.env.DREAM_HOUSE_TRIPO_IMAGE_TO_MODEL?.trim().toLowerCase();
+    const v =
+      process.env.DREAM_HOUSE_TRIPO_IMAGE_TO_MODEL?.trim().toLowerCase();
     if (v === '0' || v === 'false' || v === 'off' || v === 'no') {
       return false;
     }
@@ -925,17 +942,13 @@ export class DreamHouseService {
       if (quad) {
         body.quad = true;
       }
-      const { data } = await axios.post<TripoCreateBody>(
-        TRIPO_TASK_URL,
-        body,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${key}`,
-          },
-          timeout: 180_000,
+      const { data } = await axios.post<TripoCreateBody>(TRIPO_TASK_URL, body, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${key}`,
         },
-      );
+        timeout: 180_000,
+      });
 
       if (data.code !== 0 || !data.data?.task_id) {
         this.logger.warn(`Tripo create unexpected: ${JSON.stringify(data)}`);
@@ -986,20 +999,18 @@ export class DreamHouseService {
       if (quad) {
         body.quad = true;
       }
-      const { data } = await axios.post<TripoCreateBody>(
-        TRIPO_TASK_URL,
-        body,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${key}`,
-          },
-          timeout: 180_000,
+      const { data } = await axios.post<TripoCreateBody>(TRIPO_TASK_URL, body, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${key}`,
         },
-      );
+        timeout: 180_000,
+      });
 
       if (data.code !== 0 || !data.data?.task_id) {
-        this.logger.warn(`Tripo image_to_model unexpected: ${JSON.stringify(data)}`);
+        this.logger.warn(
+          `Tripo image_to_model unexpected: ${JSON.stringify(data)}`,
+        );
         throw new BadRequestException(
           data.message ?? 'Tripo refused the image-to-model task.',
         );
@@ -1019,7 +1030,9 @@ export class DreamHouseService {
           ? String((body as { message: unknown }).message)
           : '';
       const msg = bodyMsg || ax.message || context;
-      this.logger.error(`${context}: HTTP ${ax.response?.status ?? '?'} ${msg}`);
+      this.logger.error(
+        `${context}: HTTP ${ax.response?.status ?? '?'} ${msg}`,
+      );
       const status = ax.response?.status;
       if (status === 401) {
         throw new ServiceUnavailableException(
@@ -1070,7 +1083,10 @@ export class DreamHouseService {
           imageUrls[0],
         );
         const fileKind = this.tripoImageKindFromContentType(contentType);
-        const fileToken = await this.uploadTripoImageFromBuffer(buffer, contentType);
+        const fileToken = await this.uploadTripoImageFromBuffer(
+          buffer,
+          contentType,
+        );
         taskId = await this.createTripoImageToModelTask(fileToken, fileKind);
         this.logger.log(
           'Dream House: Tripo image_to_model (référence = première vue Pollinations).',
@@ -1135,8 +1151,7 @@ export class DreamHouseService {
         status: 'running',
         message:
           'Finalisation côté Tripo : le fichier GLB est en cours de préparation ou d’upload.',
-        progress:
-          progress !== undefined && progress >= 100 ? 99 : progress,
+        progress: progress !== undefined && progress >= 100 ? 99 : progress,
       };
     }
 

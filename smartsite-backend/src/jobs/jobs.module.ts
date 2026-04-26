@@ -7,7 +7,10 @@ import { Job, JobSchema } from './jobs.schema';
 import { JobProgress, JobProgressSchema } from './schemas/job-progress.schema';
 import { Resource, ResourceSchema } from '../resources/schemas/resource.schema';
 import { Human, HumanSchema } from '../human-resources/schemas/human.schema';
-import { Equipment, EquipmentSchema } from '../equipment-resources/schemas/equipment.schema';
+import {
+  Equipment,
+  EquipmentSchema,
+} from '../equipment-resources/schemas/equipment.schema';
 
 @Module({
   imports: [

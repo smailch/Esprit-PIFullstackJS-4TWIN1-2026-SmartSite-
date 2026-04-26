@@ -11,7 +11,7 @@ import { AuditLogModule } from '../audit-logs/audit-log.module';
 @Module({
   imports: [
     // ✅ Utilisation de forwardRef pour éviter les erreurs de dépendance circulaire
-    forwardRef(() => UsersModule), 
+    forwardRef(() => UsersModule),
     PassportModule,
     RolesModule,
     AuditLogModule,
@@ -23,6 +23,6 @@ import { AuditLogModule } from '../audit-logs/audit-log.module';
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
   // ✅ INDISPENSABLE : On exporte le AuthService pour que UsersController puisse l'utiliser
-  exports: [AuthService], 
+  exports: [AuthService],
 })
 export class AuthModule {}

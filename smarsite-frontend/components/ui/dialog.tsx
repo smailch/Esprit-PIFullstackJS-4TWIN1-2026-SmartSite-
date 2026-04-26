@@ -5,6 +5,7 @@ import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { XIcon } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
+import { TW_SVG_SIZE_ROW } from './slate-radix-menu-classes'
 
 function Dialog({
   ...props
@@ -69,7 +70,10 @@ function DialogContent({
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="absolute top-4 right-4 rounded-md p-1 text-slate-400 opacity-80 transition-all hover:bg-white/[0.08] hover:text-slate-100 hover:opacity-100 focus:ring-2 focus:ring-blue-500/40 focus:ring-offset-2 focus:ring-offset-slate-950 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-white/[0.06] [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            className={cn(
+              "absolute top-4 right-4 rounded-md p-1 text-slate-400 opacity-80 transition-all hover:bg-white/[0.08] hover:text-slate-100 hover:opacity-100 focus:ring-2 focus:ring-blue-500/40 focus:ring-offset-2 focus:ring-offset-slate-950 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-white/[0.06]",
+              TW_SVG_SIZE_ROW,
+            )}
           >
             <XIcon />
             <span className="sr-only">Close</span>

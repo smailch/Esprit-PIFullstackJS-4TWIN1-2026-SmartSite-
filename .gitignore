@@ -82,3 +82,7 @@ temp/
 # et cp smarsite-frontend/.env.example smarsite-frontend/.env.local
 !smarsite-frontend/.env.example
 !smartsite-backend/.env.example
+
+# Sonar / rapports JUnit locaux
+.scannerwork/
+reports/

@@ -1,3 +1,5 @@
+import { decodeJwtPayloadLoose } from "./jwtClientPayload";
+
 /**
  * Rôles métier (inscription publique + JWT `roleName`).
  * Doit rester aligné avec `DEFAULT_ROLES` côté Nest (`roles.service.ts`), hors Admin.
@@ -100,25 +102,17 @@ export function sidebarNavFilter(
 }
 
 export function parseJwtRoleName(token: string | null): string {
-  if (!token) return '';
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1])) as {
-      roleName?: string;
-      role?: string;
-    };
-    return normalizeRoleName(payload.roleName || payload.role);
-  } catch {
-    return '';
-  }
+  const payload = decodeJwtPayloadLoose(token);
+  if (!payload) return "";
+  return normalizeRoleName(
+    (payload.roleName as string | undefined) ||
+      (payload.role as string | undefined),
+  );
 }
 
 /** Sujet JWT (`sub`) = identifiant utilisateur Mongo. */
 export function parseJwtSub(token: string | null): string {
-  if (!token) return '';
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1])) as { sub?: string };
-    return String(payload.sub ?? '').trim();
-  } catch {
-    return '';
-  }
+  const payload = decodeJwtPayloadLoose(token);
+  if (!payload) return "";
+  return String(payload.sub ?? "").trim();
 }

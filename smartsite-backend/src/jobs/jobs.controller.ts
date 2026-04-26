@@ -20,7 +20,10 @@ import { CreateJobDto } from './create-job.dto';
 import { UpdateJobDto } from './update-job.dto';
 import { UpdateJobProgressDto } from './dto/update-job-progress.dto';
 import { Job } from './jobs.schema';
-import { progressMulterOptions, PROGRESS_UPLOAD_DIR } from './multer-progress.config';
+import {
+  progressMulterOptions,
+  PROGRESS_UPLOAD_DIR,
+} from './multer-progress.config';
 
 @Controller('jobs')
 export class JobsController {
@@ -73,7 +76,12 @@ export class JobsController {
     // Stocker un chemin relatif : affichage via proxy Next (/api-backend) + suppression fichier cohérente
     const photoUrl = `/uploads/progress/${file.filename}`;
 
-    return this.jobsService.uploadProgressPhoto(id, stepIndex, photoUrl, aiAnalysis);
+    return this.jobsService.uploadProgressPhoto(
+      id,
+      stepIndex,
+      photoUrl,
+      aiAnalysis,
+    );
   }
 
   @Delete(':id/progress/photo')

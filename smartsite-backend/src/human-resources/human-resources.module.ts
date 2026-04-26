@@ -6,9 +6,7 @@ import { Human, HumanSchema } from './schemas/human.schema';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([
-      { name: Human.name, schema: HumanSchema },
-    ]),
+    MongooseModule.forFeature([{ name: Human.name, schema: HumanSchema }]),
   ],
   controllers: [HumanResourcesController],
   providers: [HumanResourcesService],

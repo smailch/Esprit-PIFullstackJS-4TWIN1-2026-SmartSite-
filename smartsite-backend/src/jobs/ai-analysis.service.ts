@@ -16,11 +16,17 @@ function normalizeAnalysis(raw: unknown): AiAnalysisResult | null {
   if (!raw || typeof raw !== 'object') return null;
   const d = raw as Record<string, unknown>;
   const level = d.dangerLevel;
-  if (typeof level !== 'string' || !LEVELS.includes(level as AiAnalysisResult['dangerLevel'])) {
+  if (
+    typeof level !== 'string' ||
+    !LEVELS.includes(level as AiAnalysisResult['dangerLevel'])
+  ) {
     return null;
   }
   const detected = d.detectedObjects;
-  if (!Array.isArray(detected) || !detected.every((x) => typeof x === 'string')) {
+  if (
+    !Array.isArray(detected) ||
+    !detected.every((x) => typeof x === 'string')
+  ) {
     return null;
   }
   const msg = d.message;
@@ -79,8 +85,7 @@ export class AiAnalysisService {
       dangerLevel: 'LOW',
       detectedObjects: [],
       safetyStatus: { helmet: false, vest: false },
-      message:
-        'AI analysis unavailable (service offline or model not loaded).',
+      message: 'AI analysis unavailable (service offline or model not loaded).',
     };
   }
 }

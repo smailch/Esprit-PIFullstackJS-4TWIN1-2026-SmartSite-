@@ -1,0 +1,69 @@
+# CI Next.js — install, lint, tests (obligatoires), build
+name: Frontend CI
+
+on:
+  push:
+    branches: [main, master, develop]
+    paths:
+      - "smarsite-frontend/**"
+      - ".github/workflows/frontend-ci.yml"
+  pull_request:
+    branches: [main, master, develop]
+    paths:
+      - "smarsite-frontend/**"
+      - ".github/workflows/frontend-ci.yml"
+
+concurrency:
+  group: frontend-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22"
+  CI: "true"
+  HUSKY: "0"
+  NEXT_TELEMETRY_DISABLED: "1"
+  # Prérendu (lib/api) : défaut local ; en dépôt, créer la variable NEXT_PUBLIC_API_URL
+  NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL != '' && vars.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3200' }}
+
+defaults:
+  run:
+    working-directory: smarsite-frontend
+
+jobs:
+  build-and-test:
+    name: Install · Lint · Test · Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: smarsite-frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          echo ">>> npm ci (frontend)"
+          npm ci
+
+      - name: Unit tests
+        run: |
+          echo ">>> npm run test:ci (Vitest, échec = pipeline rouge)"
+          mkdir -p ../reports/junit
+          npm run test:ci
+
+      - name: Build application
+        run: |
+          echo ">>> npm run build (next build)"
+          npm run build
+
+      - name: JUnit report (optionnel)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-junit
+          path: reports/junit
+          if-no-files-found: ignore

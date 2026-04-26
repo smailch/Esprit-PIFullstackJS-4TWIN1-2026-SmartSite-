@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  NotFoundException,
+} from '@nestjs/common';
 import { UserDocument } from '../users/users.schema';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -21,7 +25,11 @@ export class AuthService {
   ) {}
 
   // ── Login classique ───────────────────────────────────────────
-  async login(email: string, password: string, meta?: { ip?: string; userAgent?: string }) {
+  async login(
+    email: string,
+    password: string,
+    meta?: { ip?: string; userAgent?: string },
+  ) {
     const user = await this.usersService['userModel'].findOne({ email });
 
     if (!user) {
@@ -69,7 +77,10 @@ export class AuthService {
   }
 
   // ── Face Login Auto ───────────────────────────────────────────
-  async faceLoginAuto(incomingDescriptor: number[], meta?: { ip?: string; userAgent?: string }) {
+  async faceLoginAuto(
+    incomingDescriptor: number[],
+    meta?: { ip?: string; userAgent?: string },
+  ) {
     const users = await this.usersService.getAllUsersWithFace();
 
     if (!users || users.length === 0) {
@@ -81,7 +92,10 @@ export class AuthService {
 
     for (const user of users) {
       if (!user.faceDescriptor || user.faceDescriptor.length === 0) continue;
-      const distance = euclideanDistance(Array.from(user.faceDescriptor), incomingDescriptor);
+      const distance = euclideanDistance(
+        Array.from(user.faceDescriptor),
+        incomingDescriptor,
+      );
       if (distance < bestDistance) {
         bestDistance = distance;
         bestMatch = user;
@@ -113,7 +127,9 @@ export class AuthService {
   private async generateToken(user: any) {
     const role = await this.roleModel.findById(user.roleId);
     const roleIdStr =
-      user.roleId != null && typeof user.roleId === 'object' && 'toString' in user.roleId
+      user.roleId != null &&
+      typeof user.roleId === 'object' &&
+      'toString' in user.roleId
         ? user.roleId.toString()
         : String(user.roleId ?? '');
     const payload = {

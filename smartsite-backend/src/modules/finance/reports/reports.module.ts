@@ -14,7 +14,7 @@ import { AnalysisAiModule } from './analysis-ai.module';
       { name: Invoice.name, schema: InvoiceSchema },
       { name: Payment.name, schema: PaymentSchema },
     ]),
-     AnalysisAiModule,
+    AnalysisAiModule,
   ],
   controllers: [ReportsController],
   providers: [ReportsService],

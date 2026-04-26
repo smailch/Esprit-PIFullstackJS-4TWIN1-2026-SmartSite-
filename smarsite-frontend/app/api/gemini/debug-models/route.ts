@@ -3,10 +3,6 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 export async function GET() {
   try {
     const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
-    
-    console.log("🔍 Clé API détectée:", apiKey ? "✅ OUI" : "❌ NON");
-    console.log("🔍 Longueur de la clé:", apiKey?.length);
-    console.log("🔍 Premiers caractères:", apiKey?.substring(0, 10) + "...");
 
     if (!apiKey) {
       return Response.json({ 
@@ -36,7 +32,6 @@ export async function GET() {
   } catch (error: unknown) {
     return Response.json({
       error: error instanceof Error ? error.message : String(error),
-      stack: String(error),
     });
   }
 }

@@ -1,4 +1,13 @@
-import { IsString, IsOptional, IsEnum, IsNotEmpty, IsDateString, IsNumber, Min, Max } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsNotEmpty,
+  IsDateString,
+  IsNumber,
+  Min,
+  Max,
+} from 'class-validator';
 
 export class CreateProgressPhotoDto {
   @IsString()

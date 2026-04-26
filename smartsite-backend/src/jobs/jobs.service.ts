@@ -8,21 +8,30 @@ import { Model, Types } from 'mongoose';
 import { unlink } from 'fs/promises';
 import { join } from 'path';
 import { Job, JobDocument } from './jobs.schema';
-import { JobProgress, JobProgressDocument } from './schemas/job-progress.schema';
-import { Resource, ResourceDocument } from '../resources/schemas/resource.schema';
 import {
-  CreateJobDto,
-  AssignedResourceDto,
-} from './create-job.dto';
+  JobProgress,
+  JobProgressDocument,
+} from './schemas/job-progress.schema';
+import {
+  Resource,
+  ResourceDocument,
+} from '../resources/schemas/resource.schema';
+import { CreateJobDto, AssignedResourceDto } from './create-job.dto';
 import { UpdateJobDto } from './update-job.dto';
 import { UpdateJobProgressDto } from './dto/update-job-progress.dto';
 import type { AiAnalysisResult } from './ai-analysis.service';
 import { PROGRESS_UPLOAD_DIR } from './multer-progress.config';
 import { Human, HumanDocument } from '../human-resources/schemas/human.schema';
-import { Equipment, EquipmentDocument } from '../equipment-resources/schemas/equipment.schema';
+import {
+  Equipment,
+  EquipmentDocument,
+} from '../equipment-resources/schemas/equipment.schema';
 
-
-const DEFAULT_STEP_LABELS = ['Préparation', 'Exécution', 'Finalisation'] as const;
+const DEFAULT_STEP_LABELS = [
+  'Préparation',
+  'Exécution',
+  'Finalisation',
+] as const;
 
 export type SerializedProgressStep = {
   step: string;
@@ -50,46 +59,44 @@ export class JobsService {
     private jobProgressModel: Model<JobProgressDocument>,
     @InjectModel(Resource.name) private resourceModel: Model<ResourceDocument>,
     @InjectModel(Equipment.name)
-        private equipmentModel: Model<EquipmentDocument>,
-         @InjectModel(Human.name)
-            private humanModel: Model<HumanDocument>,
+    private equipmentModel: Model<EquipmentDocument>,
+    @InjectModel(Human.name)
+    private humanModel: Model<HumanDocument>,
   ) {}
 
-async create(createJobDto: CreateJobDto): Promise<Job> {
-  await this.validateAssignedResources(createJobDto.assignedResources);
+  async create(createJobDto: CreateJobDto): Promise<Job> {
+    await this.validateAssignedResources(createJobDto.assignedResources);
 
-  const assignedResources = await Promise.all(
-    (createJobDto.assignedResources || []).map(async (r) => {
-      let name = '';
+    const assignedResources = await Promise.all(
+      (createJobDto.assignedResources || []).map(async (r) => {
+        let name = '';
 
-      if (r.type === 'Human') {
-        const human = await this.humanModel.findById(r.resourceId);
-        name = human
-          ? `${human.firstName} ${human.lastName}`
-          : 'Unknown';
-      }
+        if (r.type === 'Human') {
+          const human = await this.humanModel.findById(r.resourceId);
+          name = human ? `${human.firstName} ${human.lastName}` : 'Unknown';
+        }
 
-      if (r.type === 'Equipment') {
-        const equip = await this.equipmentModel.findById(r.resourceId);
-        name = equip?.name || 'Unknown';
-      }
+        if (r.type === 'Equipment') {
+          const equip = await this.equipmentModel.findById(r.resourceId);
+          name = equip?.name || 'Unknown';
+        }
 
-      return {
-        resourceId: new Types.ObjectId(r.resourceId),
-        type: r.type,
-        name, // ✅ STOCKÉ DIRECT
-      };
-    })
-  );
+        return {
+          resourceId: new Types.ObjectId(r.resourceId),
+          type: r.type,
+          name, // ✅ STOCKÉ DIRECT
+        };
+      }),
+    );
 
-  const createdJob = new this.jobModel({
-    ...createJobDto,
-    taskId: new Types.ObjectId(createJobDto.taskId),
-    assignedResources,
-  });
+    const createdJob = new this.jobModel({
+      ...createJobDto,
+      taskId: new Types.ObjectId(createJobDto.taskId),
+      assignedResources,
+    });
 
-  return createdJob.save();
-}
+    return createdJob.save();
+  }
   async findAll(): Promise<
     (Job & { progressPercentage: number; assignedResources?: unknown })[]
   > {
@@ -123,57 +130,53 @@ async create(createJobDto: CreateJobDto): Promise<Job> {
     return job;
   }
 
-async update(id: string, updateJobDto: UpdateJobDto): Promise<Job> {
-  if (updateJobDto.assignedResources?.length) {
-    await this.validateAssignedResources(
-      updateJobDto.assignedResources as AssignedResourceDto[],
-    );
+  async update(id: string, updateJobDto: UpdateJobDto): Promise<Job> {
+    if (updateJobDto.assignedResources?.length) {
+      await this.validateAssignedResources(updateJobDto.assignedResources);
+    }
+
+    const payload: Record<string, unknown> = { ...updateJobDto };
+
+    // ✅ taskId
+    if (updateJobDto.taskId) {
+      payload.taskId = new Types.ObjectId(updateJobDto.taskId);
+    }
+
+    // 🔥 AJOUT IMPORTANT : enrichir avec name
+    if (updateJobDto.assignedResources) {
+      const enrichedResources = await Promise.all(
+        updateJobDto.assignedResources.map(async (r) => {
+          let name = '';
+
+          if (r.type === 'Human') {
+            const human = await this.humanModel.findById(r.resourceId);
+            name = human ? `${human.firstName} ${human.lastName}` : 'Unknown';
+          }
+
+          if (r.type === 'Equipment') {
+            const equip = await this.equipmentModel.findById(r.resourceId);
+            name = equip?.name || 'Unknown';
+          }
+
+          return {
+            resourceId: new Types.ObjectId(r.resourceId),
+            type: r.type,
+            name, // ✅ AJOUTÉ ICI
+          };
+        }),
+      );
+
+      payload.assignedResources = enrichedResources;
+    }
+
+    const updated = await this.jobModel.findByIdAndUpdate(id, payload, {
+      new: true,
+    });
+
+    if (!updated) throw new NotFoundException('Job not found');
+
+    return updated;
   }
-
-  const payload: Record<string, unknown> = { ...updateJobDto };
-
-  // ✅ taskId
-  if (updateJobDto.taskId) {
-    payload.taskId = new Types.ObjectId(updateJobDto.taskId);
-  }
-
-  // 🔥 AJOUT IMPORTANT : enrichir avec name
-  if (updateJobDto.assignedResources) {
-    const enrichedResources = await Promise.all(
-      updateJobDto.assignedResources.map(async (r) => {
-        let name = '';
-
-        if (r.type === 'Human') {
-          const human = await this.humanModel.findById(r.resourceId);
-          name = human
-            ? `${human.firstName} ${human.lastName}`
-            : 'Unknown';
-        }
-
-        if (r.type === 'Equipment') {
-          const equip = await this.equipmentModel.findById(r.resourceId);
-          name = equip?.name || 'Unknown';
-        }
-
-        return {
-          resourceId: new Types.ObjectId(r.resourceId),
-          type: r.type,
-          name, // ✅ AJOUTÉ ICI
-        };
-      })
-    );
-
-    payload.assignedResources = enrichedResources;
-  }
-
-  const updated = await this.jobModel.findByIdAndUpdate(id, payload, {
-    new: true,
-  });
-
-  if (!updated) throw new NotFoundException('Job not found');
-
-  return updated;
-}
   async remove(id: string): Promise<void> {
     const deleted = await this.jobModel.findByIdAndDelete(id);
     if (!deleted) throw new NotFoundException('Job not found');
@@ -210,7 +213,7 @@ async update(id: string, updateJobDto: UpdateJobDto): Promise<Job> {
         step.date ??
         (step.completed !== prev?.completed && step.completed
           ? new Date()
-          : prev?.date ?? new Date());
+          : (prev?.date ?? new Date()));
       return {
         step: step.step,
         completed: step.completed,
@@ -311,25 +314,25 @@ async update(id: string, updateJobDto: UpdateJobDto): Promise<Job> {
     };
   }
 
-private async validateAssignedResources(
-  assigned: AssignedResourceDto[] | undefined,
-): Promise<void> {
-  if (!assigned?.length) return;
+  private async validateAssignedResources(
+    assigned: AssignedResourceDto[] | undefined,
+  ): Promise<void> {
+    if (!assigned?.length) return;
 
-  for (const ar of assigned) {
-    let res;
+    for (const ar of assigned) {
+      let res;
 
-    if (ar.type === 'Human') {
-      res = await this.humanModel.findById(ar.resourceId).exec();
-    } else if (ar.type === 'Equipment') {
-      res = await this.equipmentModel.findById(ar.resourceId).exec();
-    }
+      if (ar.type === 'Human') {
+        res = await this.humanModel.findById(ar.resourceId).exec();
+      } else if (ar.type === 'Equipment') {
+        res = await this.equipmentModel.findById(ar.resourceId).exec();
+      }
 
-    if (!res) {
-      throw new BadRequestException(`Resource not found: ${ar.resourceId}`);
+      if (!res) {
+        throw new BadRequestException(`Resource not found: ${ar.resourceId}`);
+      }
     }
   }
-}
   private async ensureJobExists(jobId: string): Promise<void> {
     const exists = await this.jobModel.exists({ _id: jobId });
     if (!exists) throw new NotFoundException('Job not found');
@@ -388,17 +391,16 @@ private async validateAssignedResources(
             message: string;
           }
         | undefined;
-      if (ai && typeof ai === 'object' && levels.includes(ai.dangerLevel as string)) {
+      if (
+        ai &&
+        typeof ai === 'object' &&
+        levels.includes(ai.dangerLevel as string)
+      ) {
         const ss = ai.safetyStatus as Record<string, unknown> | undefined;
-        const helmet =
-          ss && typeof ss.helmet === 'boolean' ? ss.helmet : false;
+        const helmet = ss && typeof ss.helmet === 'boolean' ? ss.helmet : false;
         const vest = ss && typeof ss.vest === 'boolean' ? ss.vest : false;
         aiAnalysis = {
-          dangerLevel: ai.dangerLevel as
-            | 'LOW'
-            | 'MEDIUM'
-            | 'HIGH'
-            | 'CRITICAL',
+          dangerLevel: ai.dangerLevel as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL',
           detectedObjects: Array.isArray(ai.detectedObjects)
             ? (ai.detectedObjects as string[])
             : [],

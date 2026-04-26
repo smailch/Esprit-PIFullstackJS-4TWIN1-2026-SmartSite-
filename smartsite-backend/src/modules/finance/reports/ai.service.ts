@@ -16,7 +16,9 @@ export class AiService {
       this.clientPromise = Promise.resolve(null);
       return this.clientPromise;
     }
-    this.clientPromise = import('@mistralai/mistralai').then(({ Mistral }) => new Mistral({ apiKey }));
+    this.clientPromise = import('@mistralai/mistralai').then(
+      ({ Mistral }) => new Mistral({ apiKey }),
+    );
     return this.clientPromise;
   }
 

@@ -25,7 +25,9 @@ export class ProjectsService {
 
   private assertValidObjectId(id: string, fieldName: string) {
     if (!isValidObjectId(id)) {
-      throw new BadRequestException(`${fieldName} must be a valid MongoDB ObjectId`);
+      throw new BadRequestException(
+        `${fieldName} must be a valid MongoDB ObjectId`,
+      );
     }
   }
 
@@ -36,7 +38,10 @@ export class ProjectsService {
   /**
    * Liste : pour le rôle Client, uniquement les projets dont il est le `clientId`.
    */
-  async findAllForRequestUser(u: { sub: string; roleName?: string }): Promise<Project[]> {
+  async findAllForRequestUser(u: {
+    sub: string;
+    roleName?: string;
+  }): Promise<Project[]> {
     if (ProjectsService.isClientRole(u.roleName)) {
       return this.findAllByClientId(u.sub);
     }
@@ -73,9 +78,7 @@ export class ProjectsService {
     return { ...this.mapProject(p) } as unknown as Project;
   }
 
-  private mapProject(
-    project: ProjectDocument,
-  ) {
+  private mapProject(project: ProjectDocument) {
     return {
       ...project.toObject(),
       startDate: project.startDate || null,
@@ -88,7 +91,10 @@ export class ProjectsService {
     const newProject = new this.projectModel(createProjectDto);
     const saved = await newProject.save();
     if (saved.clientId) {
-      await this.usersService.addUserProjectId(String(saved.clientId), String(saved._id));
+      await this.usersService.addUserProjectId(
+        String(saved.clientId),
+        String(saved._id),
+      );
     }
     return this.mapProject(saved) as unknown as Project;
   }
@@ -111,7 +117,10 @@ export class ProjectsService {
     } as unknown as Project;
   }
 
-  async update(id: string, updateProjectDto: UpdateProjectDto): Promise<Project> {
+  async update(
+    id: string,
+    updateProjectDto: UpdateProjectDto,
+  ): Promise<Project> {
     this.assertValidObjectId(id, 'id');
     const existing = await this.projectModel.findById(id).exec();
     if (!existing) {

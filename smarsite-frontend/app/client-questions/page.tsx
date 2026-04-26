@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import MainLayout from '@/components/MainLayout';
 import { MessageCircle, Send, X, ChevronDown, ChevronUp } from 'lucide-react';
-
-const API = 'http://localhost:3200';
+import { getApiBaseUrl } from '@/lib/api';
+import { decodeJwtPayloadLoose } from '@/lib/jwtClientPayload';
 
 export default function ClientQuestionsPage() {
     const router = useRouter();
@@ -23,8 +23,9 @@ export default function ClientQuestionsPage() {
         try {
             const token = getToken();
             if (!token) { router.push('/login'); return; }
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            if (payload.roleName !== 'Admin' && payload.roleName !== 'Director') {
+            const payload = decodeJwtPayloadLoose(token);
+            const role = String(payload?.roleName ?? '');
+            if (role !== 'Admin' && role !== 'Director') {
                 router.push('/');
             }
         } catch { router.push('/login'); }
@@ -33,7 +34,7 @@ export default function ClientQuestionsPage() {
     const fetchConversations = async () => {
         try {
             const token = getToken();
-            const res = await axios.get(`${API}/messaging/conversations`, {
+            const res = await axios.get(`${getApiBaseUrl()}/messaging/conversations`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             setConversations(Array.isArray(res.data) ? res.data : []);
@@ -49,7 +50,7 @@ export default function ClientQuestionsPage() {
         setSending(conversationId);
         try {
             const token = getToken();
-            await axios.post(`${API}/messaging/reply/${conversationId}`, { content }, {
+            await axios.post(`${getApiBaseUrl()}/messaging/reply/${conversationId}`, { content }, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             setReplyText(prev => ({ ...prev, [conversationId]: '' }));

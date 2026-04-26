@@ -21,4 +21,5 @@ export class DocumentVersion {
   changeNote: string; // note expliquant les changements
 }
 
-export const DocumentVersionSchema = SchemaFactory.createForClass(DocumentVersion);
+export const DocumentVersionSchema =
+  SchemaFactory.createForClass(DocumentVersion);

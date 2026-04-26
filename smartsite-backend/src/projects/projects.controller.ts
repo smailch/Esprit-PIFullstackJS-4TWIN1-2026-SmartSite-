@@ -57,11 +57,11 @@ export class ProjectsController {
   }
 
   @Get(':id')
-  async findOne(
-    @Request() req: { user: JwtUser },
-    @Param('id') id: string,
-  ) {
-    await this.projectsService.assertRequestCanAccessProject(this.getUser(req), id);
+  async findOne(@Request() req: { user: JwtUser }, @Param('id') id: string) {
+    await this.projectsService.assertRequestCanAccessProject(
+      this.getUser(req),
+      id,
+    );
     return this.projectsService.findOne(id);
   }
 

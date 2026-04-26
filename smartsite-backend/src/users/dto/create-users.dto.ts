@@ -7,7 +7,6 @@ import {
 } from 'class-validator';
 
 export class CreateUserDto {
-
   @IsNotEmpty({ message: 'Le nom est obligatoire' })
   fullName!: string;
 

@@ -64,7 +64,7 @@ export class AttendancePrimeSmsService {
   }> {
     const job = await this.jobsService.findOne(jobId);
     const attendance = await this.attendanceService.findByJob(jobId);
-    const metrics = aggregateMonthlyAttendanceByWorker(attendance as Attendance[], year, month);
+    const metrics = aggregateMonthlyAttendanceByWorker(attendance, year, month);
 
     if (metrics.length === 0) {
       throw new BadRequestException(
@@ -122,7 +122,13 @@ export class AttendancePrimeSmsService {
       }
 
       const firstName = human.firstName?.trim() || 'Hello';
-      const body = buildMotivationMessage(firstName, job.title, m.primeDt, month, year);
+      const body = buildMotivationMessage(
+        firstName,
+        job.title,
+        m.primeDt,
+        month,
+        year,
+      );
 
       try {
         const out = await this.smsService.sendSms(phone, body);
@@ -171,7 +177,13 @@ export class AttendancePrimeSmsService {
       jobTitle: job.title,
       annee: year,
       mois: month,
-      messageExemple: buildMotivationMessage('Mohamed', job.title, 50, month, year),
+      messageExemple: buildMotivationMessage(
+        'Mohamed',
+        job.title,
+        50,
+        month,
+        year,
+      ),
       financeEntriesRecorded,
       results,
     };
@@ -196,7 +208,7 @@ export class AttendancePrimeSmsService {
   }> {
     const job = await this.jobsService.findOne(jobId);
     const attendance = await this.attendanceService.findByJob(jobId);
-    const metrics = aggregateMonthlyAttendanceByWorker(attendance as Attendance[], year, month);
+    const metrics = aggregateMonthlyAttendanceByWorker(attendance, year, month);
 
     if (metrics.length === 0) {
       throw new BadRequestException(
@@ -274,7 +286,13 @@ export class AttendancePrimeSmsService {
       jobTitle: job.title,
       annee: year,
       mois: month,
-      messageExemple: buildMotivationMessage('Mohamed', job.title, 50, month, year),
+      messageExemple: buildMotivationMessage(
+        'Mohamed',
+        job.title,
+        50,
+        month,
+        year,
+      ),
       financeEntriesRecorded,
       results,
     };

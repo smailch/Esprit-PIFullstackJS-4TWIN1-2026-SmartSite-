@@ -6,6 +6,12 @@ import { PrimePayoutsModule } from './prime-payouts/prime-payouts.module';
 import { PayrollModule } from './payroll/payroll.module';
 
 @Module({
-  imports: [InvoicesModule, PaymentsModule, ReportsModule, PrimePayoutsModule, PayrollModule],
+  imports: [
+    InvoicesModule,
+    PaymentsModule,
+    ReportsModule,
+    PrimePayoutsModule,
+    PayrollModule,
+  ],
 })
 export class FinanceModule {}

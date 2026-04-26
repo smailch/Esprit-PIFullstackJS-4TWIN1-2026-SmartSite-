@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "jsx": "react-jsx",
+    "esModuleInterop": true,
+    "allowJs": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "strict": false,
+    "useDefineForClassFields": false,
+    "baseUrl": ".",
+    "paths": { "@/*": ["smarsite-frontend/*"] }
+  },
+  "include": [
+    "smartsite-backend/src/**/*.ts",
+    "smarsite-frontend/**/*.ts",
+    "smarsite-frontend/**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/node_modules",
+    "dist",
+    ".next",
+    "coverage",
+    "**/coverage"
+  ]
+}

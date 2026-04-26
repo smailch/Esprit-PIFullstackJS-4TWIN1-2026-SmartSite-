@@ -4,6 +4,9 @@ import { Bell, Settings, Bot, Send, X, Loader2 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AccessibilityMenu from '@/components/AccessibilityMenu';
+import { createConversationId } from '@/lib/conversationId';
+import { decodeJwtPayloadLoose } from '@/lib/jwtClientPayload';
+import { getApiBaseUrl } from '@/lib/api';
 
 interface User {
   fullName?: string;
@@ -17,8 +20,6 @@ interface ChatMessage {
   transferredToDirector?: boolean;
 }
 
-const API = 'http://localhost:3200';
-
 // ══════════════════════════════════════════════════════════════════
 //  CHATBOT POPUP
 // ══════════════════════════════════════════════════════════════════
@@ -28,7 +29,7 @@ const ChatbotPopup = ({ user, onClose }: { user: User | null; onClose: () => voi
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [conversationId] = useState(() => `conv_${Date.now()}_${Math.random().toString(36).slice(2)}`);
+  const [conversationId] = useState(() => createConversationId());
   const [transferred, setTransferred] = useState(false);
   const [directorReply, setDirectorReply] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -43,7 +44,7 @@ const ChatbotPopup = ({ user, onClose }: { user: User | null; onClose: () => voi
     const check = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch(`${API}/messaging/check-reply/${conversationId}`, {
+        const res = await fetch(`${getApiBaseUrl()}/messaging/check-reply/${conversationId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
@@ -78,7 +79,7 @@ const ChatbotPopup = ({ user, onClose }: { user: User | null; onClose: () => voi
       const token = localStorage.getItem('token');
       const sessionHistory = messages.map(m => ({ role: m.role, content: m.content }));
 
-      const res = await fetch(`${API}/messaging/ask`, {
+      const res = await fetch(`${getApiBaseUrl()}/messaging/ask`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ question: text, conversationId, sessionHistory }),
@@ -252,12 +253,21 @@ export default function Topbar() {
     const token = localStorage.getItem('token');
     if (!token) { router.push('/login'); return; }
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      setUser({ fullName: payload.fullName || payload.name, email: payload.email, profileImage: payload.profileImage });
+      const payload = decodeJwtPayloadLoose(token);
+      if (!payload) {
+        localStorage.removeItem('token');
+        router.push('/login');
+        return;
+      }
+      setUser({
+        fullName: (payload.fullName as string | undefined) || (payload.name as string | undefined),
+        email: payload.email as string | undefined,
+        profileImage: payload.profileImage as string | undefined,
+      });
       if (payload.roleName === 'Admin') setIsAdmin(true);
       if (payload.roleName === 'Client') setIsClient(true);
 
-      fetch(`${API}/users/${payload.sub}`, { headers: { Authorization: `Bearer ${token}` } })
+      fetch(`${getApiBaseUrl()}/users/${payload.sub}`, { headers: { Authorization: `Bearer ${token}` } })
         .then(res => res.json())
         .then(data => setUser({ fullName: data.fullName, email: data.email, profileImage: data.profileImage }))
         .catch(() => { });
@@ -272,7 +282,7 @@ export default function Topbar() {
     const fetchUnread = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch(`${API}/audit-logs/unread-count`, { headers: { Authorization: `Bearer ${token}` } });
+        const res = await fetch(`${getApiBaseUrl()}/audit-logs/unread-count`, { headers: { Authorization: `Bearer ${token}` } });
         const count = await res.json();
         setUnreadAlerts(typeof count === 'number' ? count : 0);
       } catch { }

@@ -26,10 +26,7 @@ export class ReportsController {
   // 📄 PDF DOWNLOAD
   // ===============================
   @Get('project/:projectId/pdf')
-  async getPdf(
-    @Param('projectId') projectId: string,
-    @Res() res: Response,
-  ) {
+  async getPdf(@Param('projectId') projectId: string, @Res() res: Response) {
     const pdfBuffer = await this.reportsService.generatePdf(projectId);
 
     res.setHeader('Content-Type', 'application/pdf');

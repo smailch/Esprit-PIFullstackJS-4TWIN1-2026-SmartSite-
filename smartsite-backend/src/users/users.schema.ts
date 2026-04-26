@@ -1,13 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
-
-
 export type UserDocument = User & Document;
 
 @Schema({ timestamps: true })
 export class User {
-
   @Prop({ required: true })
   fullName!: string;
 
@@ -34,7 +31,7 @@ export class User {
 
   @Prop({ type: [Number], default: null })
   faceDescriptor!: number[];
-  
+
   @Prop({ type: String, default: null })
   profileImage!: string | null;
 

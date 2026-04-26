@@ -22,7 +22,12 @@ export class PayrollController {
       monthStr !== undefined && monthStr !== ''
         ? Number.parseInt(monthStr, 10)
         : now.getUTCMonth() + 1;
-    if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) {
+    if (
+      !Number.isFinite(year) ||
+      !Number.isFinite(month) ||
+      month < 1 ||
+      month > 12
+    ) {
       throw new BadRequestException('Invalid year and month (month 1–12).');
     }
     return this.payrollService.getMonthlyPayroll(year, month);

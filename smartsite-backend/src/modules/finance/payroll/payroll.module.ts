@@ -1,8 +1,17 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { Human, HumanSchema } from '../../../human-resources/schemas/human.schema';
-import { Attendance, AttendanceSchema } from '../../../attendance/schemas/attendance.schema';
-import { PrimePayout, PrimePayoutSchema } from '../prime-payouts/schemas/prime-payout.schema';
+import {
+  Human,
+  HumanSchema,
+} from '../../../human-resources/schemas/human.schema';
+import {
+  Attendance,
+  AttendanceSchema,
+} from '../../../attendance/schemas/attendance.schema';
+import {
+  PrimePayout,
+  PrimePayoutSchema,
+} from '../prime-payouts/schemas/prime-payout.schema';
 import { PayrollService } from './payroll.service';
 import { PayrollController } from './payroll.controller';
 

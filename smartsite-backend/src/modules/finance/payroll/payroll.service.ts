@@ -1,9 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Human, HumanDocument } from '../../../human-resources/schemas/human.schema';
-import { Attendance, AttendanceDocument } from '../../../attendance/schemas/attendance.schema';
-import { PrimePayout, PrimePayoutDocument } from '../prime-payouts/schemas/prime-payout.schema';
+import {
+  Human,
+  HumanDocument,
+} from '../../../human-resources/schemas/human.schema';
+import {
+  Attendance,
+  AttendanceDocument,
+} from '../../../attendance/schemas/attendance.schema';
+import {
+  PrimePayout,
+  PrimePayoutDocument,
+} from '../prime-payouts/schemas/prime-payout.schema';
 import {
   aggregateMonthlyAttendanceByWorker,
   countWeekdaysInMonth,
@@ -47,7 +56,9 @@ function mergeAttendanceByCalendarDay(records: Attendance[]): Attendance[] {
       map.set(dk, r);
     } else {
       const status =
-        cur.status === 'present' || r.status === 'present' ? 'present' : 'absent';
+        cur.status === 'present' || r.status === 'present'
+          ? 'present'
+          : 'absent';
       map.set(dk, { ...cur, status });
     }
   }
@@ -64,12 +75,18 @@ export class PayrollService {
     private readonly primePayoutModel: Model<PrimePayoutDocument>,
   ) {}
 
-  async getMonthlyPayroll(year: number, month: number): Promise<{
+  async getMonthlyPayroll(
+    year: number,
+    month: number,
+  ): Promise<{
     year: number;
     month: number;
     rows: PayrollMonthlyRow[];
   }> {
-    const humans = await this.humanModel.find().sort({ lastName: 1, firstName: 1 }).exec();
+    const humans = await this.humanModel
+      .find()
+      .sort({ lastName: 1, firstName: 1 })
+      .exec();
 
     const rows: PayrollMonthlyRow[] = [];
 
@@ -150,7 +167,9 @@ export class PayrollService {
       const tauxJournalierDt = jo > 0 ? roundDt(monthlySalaryDt / jo) : 0;
       const joursNonPayes = jo - metrics.joursPresentsOuvrables;
       const deductionAbsencesDt = roundDt(tauxJournalierDt * joursNonPayes);
-      const salaireNetApresAbsencesDt = roundDt(monthlySalaryDt - deductionAbsencesDt);
+      const salaireNetApresAbsencesDt = roundDt(
+        monthlySalaryDt - deductionAbsencesDt,
+      );
       const primePointageDt = metrics.primeDt;
 
       const primeDocs = await this.primePayoutModel

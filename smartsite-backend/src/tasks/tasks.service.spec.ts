@@ -89,7 +89,12 @@ const makeMockProjectModel = (projectDoc = makeProjectDoc()) => ({
   find: jest.fn().mockReturnValue({
     select: jest.fn().mockReturnThis(),
     lean: jest.fn().mockReturnThis(),
-    exec: jest.fn().mockResolvedValue([projectDoc]),
+    exec: jest.fn().mockResolvedValue([{ _id: projectDoc._id }]),
+  }),
+  findById: jest.fn().mockReturnValue({
+    select: jest.fn().mockReturnThis(),
+    lean: jest.fn().mockReturnThis(),
+    exec: jest.fn().mockResolvedValue({ status: 'En cours' }),
   }),
   updateMany: jest.fn().mockReturnValue({
     exec: jest.fn().mockResolvedValue({ modifiedCount: 0 }),
@@ -129,7 +134,8 @@ describe('TasksService', () => {
 
   describe('recalculateProjectSpentBudget', () => {
     it('doit sommer les spentBudget (find + lean) et mettre à jour le projet avec $set', async () => {
-      const total = await service.recalculateProjectSpentBudget(VALID_PROJECT_ID);
+      const total =
+        await service.recalculateProjectSpentBudget(VALID_PROJECT_ID);
 
       expect(mockTaskModel.find).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -157,7 +163,8 @@ describe('TasksService', () => {
         exec: jest.fn().mockResolvedValue([]),
       });
 
-      const total = await service.recalculateProjectSpentBudget(VALID_PROJECT_ID);
+      const total =
+        await service.recalculateProjectSpentBudget(VALID_PROJECT_ID);
       expect(total).toBe(0);
     });
 
@@ -165,7 +172,9 @@ describe('TasksService', () => {
       mockTaskModel.find = jest.fn().mockReturnValue({
         select: jest.fn().mockReturnThis(),
         lean: jest.fn().mockReturnThis(),
-        exec: jest.fn().mockResolvedValue([{ _id: new Types.ObjectId(), spentBudget: 0 }]),
+        exec: jest
+          .fn()
+          .mockResolvedValue([{ _id: new Types.ObjectId(), spentBudget: 0 }]),
       });
 
       await service.recalculateProjectSpentBudget(VALID_PROJECT_ID);
@@ -239,7 +248,9 @@ describe('TasksService', () => {
       // La tâche doit être mise à jour avec $set incluant spentBudget
       expect(mockTaskModel.findByIdAndUpdate).toHaveBeenCalledWith(
         VALID_TASK_ID,
-        expect.objectContaining({ $set: expect.objectContaining({ spentBudget: 2500 }) }),
+        expect.objectContaining({
+          $set: expect.objectContaining({ spentBudget: 2500 }),
+        }),
         { new: true },
       );
 
@@ -260,7 +271,9 @@ describe('TasksService', () => {
         sort: jest.fn().mockReturnThis(),
         select: jest.fn().mockReturnThis(),
         lean: jest.fn().mockReturnThis(),
-        exec: jest.fn().mockResolvedValue([{ _id: new Types.ObjectId(), spentBudget: 0 }]),
+        exec: jest
+          .fn()
+          .mockResolvedValue([{ _id: new Types.ObjectId(), spentBudget: 0 }]),
       });
 
       await service.update(VALID_TASK_ID, {
@@ -291,7 +304,9 @@ describe('TasksService', () => {
         exec: jest.fn().mockResolvedValue(null),
       });
 
-      await expect(service.remove(VALID_TASK_ID)).rejects.toThrow(NotFoundException);
+      await expect(service.remove(VALID_TASK_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -308,7 +323,7 @@ describe('TasksService', () => {
   /* ---------- deleteByProjectId ---------- */
 
   describe('deleteByProjectId', () => {
-    it('doit supprimer toutes les tâches d\'un projet et retourner le nombre supprimé', async () => {
+    it("doit supprimer toutes les tâches d'un projet et retourner le nombre supprimé", async () => {
       mockTaskModel.deleteMany = jest.fn().mockReturnValue({
         exec: jest.fn().mockResolvedValue({ deletedCount: 3 }),
       });

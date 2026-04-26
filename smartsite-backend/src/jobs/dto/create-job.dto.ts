@@ -1,4 +1,10 @@
-import { IsString, IsNotEmpty, IsDateString, IsArray, ValidateNested } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsDateString,
+  IsArray,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 class AssignedResourceDto {
@@ -10,7 +16,7 @@ class AssignedResourceDto {
   @IsString()
   type!: 'Human' | 'Equipment';
 
-  name?: string; 
+  name?: string;
 }
 
 export class CreateJobDto {

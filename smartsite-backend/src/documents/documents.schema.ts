@@ -37,4 +37,5 @@ export class ProjectDocument {
   isActive: boolean;
 }
 
-export const ProjectDocumentSchema = SchemaFactory.createForClass(ProjectDocument);
+export const ProjectDocumentSchema =
+  SchemaFactory.createForClass(ProjectDocument);

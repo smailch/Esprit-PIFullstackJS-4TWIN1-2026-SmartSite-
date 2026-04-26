@@ -33,10 +33,10 @@ function applyLargeText(enabled: boolean) {
   else root.removeAttribute('data-a11y-large-text');
 }
 
-function chunkTextForSpeech(raw: string, maxTotal = 12000): string[] {
+export function chunkTextForSpeech(raw: string, maxTotal = 12000): string[] {
   let text = raw.replace(/\s+/g, ' ').trim();
   if (text.length > maxTotal) text = `${text.slice(0, maxTotal)}…`;
-  const parts = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g);
+  const parts = text.match(/(?:[^.!?]+[.!?]+|[^.!?]+$)/g);
   if (!parts?.length) return text ? [text] : [];
   return parts.map((p) => p.trim()).filter(Boolean);
 }

@@ -73,7 +73,9 @@ export class SmsService {
    * and either TWILIO_AUTH_TOKEN or (TWILIO_API_KEY_SID SK… + TWILIO_API_KEY_SECRET).
    */
   isTwilioConfigured(): boolean {
-    return this.resolveTwilioAuth() != null && this.resolveTwilioSender() != null;
+    return (
+      this.resolveTwilioAuth() != null && this.resolveTwilioSender() != null
+    );
   }
 
   /**
@@ -82,23 +84,34 @@ export class SmsService {
    */
   getSmsSendBlocker(): string | null {
     const mode =
-      (this.configService.get<string>('SMS_MODE') ?? '').trim().toLowerCase() || 'twilio';
+      (this.configService.get<string>('SMS_MODE') ?? '').trim().toLowerCase() ||
+      'twilio';
     if (mode === 'console') return null;
 
-    const accountSid = this.configService.get<string>('TWILIO_ACCOUNT_SID')?.trim();
-    const messagingSid = this.configService.get<string>('TWILIO_MESSAGING_SERVICE_SID')?.trim();
+    const accountSid = this.configService
+      .get<string>('TWILIO_ACCOUNT_SID')
+      ?.trim();
+    const messagingSid = this.configService
+      .get<string>('TWILIO_MESSAGING_SERVICE_SID')
+      ?.trim();
     const from = this.configService.get<string>('TWILIO_FROM_NUMBER')?.trim();
-    const authToken = this.configService.get<string>('TWILIO_AUTH_TOKEN')?.trim();
-    const apiKeySid = this.configService.get<string>('TWILIO_API_KEY_SID')?.trim();
-    const apiKeySecret = this.configService.get<string>('TWILIO_API_KEY_SECRET')?.trim();
+    const authToken = this.configService
+      .get<string>('TWILIO_AUTH_TOKEN')
+      ?.trim();
+    const apiKeySid = this.configService
+      .get<string>('TWILIO_API_KEY_SID')
+      ?.trim();
+    const apiKeySecret = this.configService
+      .get<string>('TWILIO_API_KEY_SECRET')
+      ?.trim();
     const hasAuth = !!(authToken || (apiKeySid && apiKeySecret));
     const hasSender =
-      (messagingSid?.startsWith('MG') ?? false) ||
-      (!!from && from.length > 0);
+      (messagingSid?.startsWith('MG') ?? false) || (!!from && from.length > 0);
 
     const missing: string[] = [];
     if (!accountSid) missing.push('TWILIO_ACCOUNT_SID (AC…)');
-    else if (!accountSid.startsWith('AC')) missing.push('TWILIO_ACCOUNT_SID must start with AC');
+    else if (!accountSid.startsWith('AC'))
+      missing.push('TWILIO_ACCOUNT_SID must start with AC');
     if (!hasSender) {
       missing.push(
         'TWILIO_MESSAGING_SERVICE_SID (MG…) or TWILIO_FROM_NUMBER — the Messages API requires one of them',
@@ -107,7 +120,9 @@ export class SmsService {
       missing.push('TWILIO_MESSAGING_SERVICE_SID must start with MG');
     }
     if (!hasAuth) {
-      missing.push('TWILIO_AUTH_TOKEN or TWILIO_API_KEY_SID + TWILIO_API_KEY_SECRET');
+      missing.push(
+        'TWILIO_AUTH_TOKEN or TWILIO_API_KEY_SID + TWILIO_API_KEY_SECRET',
+      );
     }
     if (missing.length === 0) return null;
     return `Incomplete SMS configuration: ${missing.join(' · ')}.`;
@@ -122,10 +137,18 @@ export class SmsService {
     accountSidForUrl: string;
     authorizationBasic: string;
   } | null {
-    const accountSidForUrl = this.configService.get<string>('TWILIO_ACCOUNT_SID')?.trim();
-    const authToken = this.configService.get<string>('TWILIO_AUTH_TOKEN')?.trim();
-    const apiKeySid = this.configService.get<string>('TWILIO_API_KEY_SID')?.trim();
-    const apiKeySecret = this.configService.get<string>('TWILIO_API_KEY_SECRET')?.trim();
+    const accountSidForUrl = this.configService
+      .get<string>('TWILIO_ACCOUNT_SID')
+      ?.trim();
+    const authToken = this.configService
+      .get<string>('TWILIO_AUTH_TOKEN')
+      ?.trim();
+    const apiKeySid = this.configService
+      .get<string>('TWILIO_API_KEY_SID')
+      ?.trim();
+    const apiKeySecret = this.configService
+      .get<string>('TWILIO_API_KEY_SECRET')
+      ?.trim();
 
     if (!accountSidForUrl) return null;
 
@@ -136,9 +159,9 @@ export class SmsService {
       return { accountSidForUrl, authorizationBasic };
     }
     if (apiKeySid && apiKeySecret) {
-      const authorizationBasic = Buffer.from(`${apiKeySid}:${apiKeySecret}`).toString(
-        'base64',
-      );
+      const authorizationBasic = Buffer.from(
+        `${apiKeySid}:${apiKeySecret}`,
+      ).toString('base64');
       return { accountSidForUrl, authorizationBasic };
     }
     return null;
@@ -149,9 +172,12 @@ export class SmsService {
     | { mode: 'messaging'; messagingServiceSid: string }
     | { mode: 'from'; from: string }
     | null {
-    const mg = this.configService.get<string>('TWILIO_MESSAGING_SERVICE_SID')?.trim();
+    const mg = this.configService
+      .get<string>('TWILIO_MESSAGING_SERVICE_SID')
+      ?.trim();
     const from = this.configService.get<string>('TWILIO_FROM_NUMBER')?.trim();
-    if (mg?.startsWith('MG')) return { mode: 'messaging', messagingServiceSid: mg };
+    if (mg?.startsWith('MG'))
+      return { mode: 'messaging', messagingServiceSid: mg };
     if (from) return { mode: 'from', from };
     return null;
   }
@@ -160,9 +186,13 @@ export class SmsService {
    * Sends an SMS via Twilio REST API (account required).
    * `SMS_MODE=console`: log only (useful to test without Twilio).
    */
-  async sendSms(toE164: string, body: string): Promise<{ sid: string; mode: 'twilio' | 'console' }> {
+  async sendSms(
+    toE164: string,
+    body: string,
+  ): Promise<{ sid: string; mode: 'twilio' | 'console' }> {
     const mode =
-      (this.configService.get<string>('SMS_MODE') ?? '').trim().toLowerCase() || 'twilio';
+      (this.configService.get<string>('SMS_MODE') ?? '').trim().toLowerCase() ||
+      'twilio';
 
     if (mode === 'console') {
       this.logger.log(
@@ -211,7 +241,8 @@ export class SmsService {
       let twilioMsg = text.slice(0, 500);
       try {
         const j = JSON.parse(text) as { message?: string; code?: number };
-        if (j.message) twilioMsg = `${j.message}${j.code != null ? ` (code ${j.code})` : ''}`;
+        if (j.message)
+          twilioMsg = `${j.message}${j.code != null ? ` (code ${j.code})` : ''}`;
       } catch {
         /* ignore */
       }

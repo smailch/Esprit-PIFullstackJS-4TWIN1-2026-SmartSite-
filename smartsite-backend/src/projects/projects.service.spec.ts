@@ -3,10 +3,15 @@ import { ProjectsService } from './projects.service';
 import { getModelToken } from '@nestjs/mongoose';
 import { Project } from './schemas/project.schema';
 import { TasksService } from '../tasks/tasks.service';
-import { NotFoundException } from '@nestjs/common';
+import { UsersService } from '../users/users.service';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Types } from 'mongoose';
 
-const mockProjectDoc = (overrides = {}) => ({
-  _id: 'project-id-1',
+const PID = 'aaaaaaaaaaaaaaaaaaaaaaaa';
+const USER_ID = 'bbbbbbbbbbbbbbbbbbbbbbbb';
+
+const mockProjectDoc = (overrides: Record<string, unknown> = {}) => ({
+  _id: PID,
   name: 'Projet test',
   description: 'Description',
   startDate: null,
@@ -16,7 +21,8 @@ const mockProjectDoc = (overrides = {}) => ({
   budget: 10000,
   spentBudget: 0,
   location: 'Alger',
-  createdBy: 'user-id-1',
+  createdBy: USER_ID,
+  clientId: undefined,
   createdAt: new Date(),
   toObject: () => ({ ...mockProjectDoc(overrides) }),
   ...overrides,
@@ -36,6 +42,11 @@ const mockTasksService = {
   recalculateProjectSpentBudget: jest.fn().mockResolvedValue(0),
 };
 
+const mockUsersService = {
+  addUserProjectId: jest.fn().mockResolvedValue(undefined),
+  removeUserProjectId: jest.fn().mockResolvedValue(undefined),
+};
+
 describe('ProjectsService', () => {
   let service: ProjectsService;
 
@@ -45,14 +56,9 @@ describe('ProjectsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProjectsService,
-        {
-          provide: getModelToken(Project.name),
-          useValue: mockProjectModel,
-        },
-        {
-          provide: TasksService,
-          useValue: mockTasksService,
-        },
+        { provide: getModelToken(Project.name), useValue: mockProjectModel },
+        { provide: TasksService, useValue: mockTasksService },
+        { provide: UsersService, useValue: mockUsersService },
       ],
     }).compile();
 
@@ -63,15 +69,31 @@ describe('ProjectsService', () => {
     expect(service).toBeDefined();
   });
 
+  describe('Given isClientRole helper', () => {
+    it('When roleName is Client Then returns true', () => {
+      expect(ProjectsService.isClientRole('Client')).toBe(true);
+    });
+    it('When roleName is undefined or other Then returns false', () => {
+      expect(ProjectsService.isClientRole(undefined)).toBe(false);
+      expect(ProjectsService.isClientRole('Admin')).toBe(false);
+    });
+  });
+
   describe('findAll', () => {
-    it('should return an array of projects with startDate/endDate normalised', async () => {
+    it('When DB returns projects Then startDate/endDate are normalised', async () => {
       const doc = {
         ...mockProjectDoc(),
         startDate: null,
         endDate: null,
-        toObject: () => ({ ...mockProjectDoc(), startDate: null, endDate: null }),
+        toObject: () => ({
+          ...mockProjectDoc(),
+          startDate: null,
+          endDate: null,
+        }),
       };
-      mockProjectModel.find.mockReturnValue({ exec: jest.fn().mockResolvedValue([doc]) });
+      mockProjectModel.find.mockReturnValue({
+        exec: jest.fn().mockResolvedValue([doc]),
+      });
 
       const result = await service.findAll();
 
@@ -81,94 +103,243 @@ describe('ProjectsService', () => {
     });
   });
 
-  describe('findOne', () => {
-    it('should return the project when it exists', async () => {
-      const doc = mockProjectDoc();
-      mockProjectModel.findById.mockReturnValue({ exec: jest.fn().mockResolvedValue(doc) });
+  describe('findAllForRequestUser', () => {
+    it('When user is Client Then filters by clientId', async () => {
+      const cid = new Types.ObjectId().toHexString();
+      mockProjectModel.find.mockReturnValue({
+        exec: jest.fn().mockResolvedValue([mockProjectDoc({ clientId: cid })]),
+      });
 
-      const result = await service.findOne('aaaaaaaaaaaaaaaaaaaaaaaa');
+      const result = await service.findAllForRequestUser({
+        sub: cid,
+        roleName: 'Client',
+      });
+
+      expect(mockProjectModel.find).toHaveBeenCalledWith({ clientId: cid });
+      expect(result).toHaveLength(1);
+    });
+
+    it('When user is not Client Then delegates to findAll', async () => {
+      const doc = { ...mockProjectDoc(), toObject: () => mockProjectDoc() };
+      mockProjectModel.find.mockReturnValue({
+        exec: jest.fn().mockResolvedValue([doc]),
+      });
+
+      const result = await service.findAllForRequestUser({
+        sub: USER_ID,
+        roleName: 'Admin',
+      });
+
+      expect(mockProjectModel.find).toHaveBeenCalledWith();
+      expect(result).toHaveLength(1);
+    });
+
+    it('When client sub is invalid ObjectId Then throws', async () => {
+      await expect(
+        service.findAllForRequestUser({ sub: 'bad', roleName: 'Client' }),
+      ).rejects.toThrow();
+    });
+  });
+
+  describe('assertRequestCanAccessProject', () => {
+    it('When Client accesses another users project Then ForbiddenException', async () => {
+      const other = new Types.ObjectId().toHexString();
+      mockProjectModel.findById.mockReturnValue({
+        exec: jest
+          .fn()
+          .mockResolvedValue(
+            mockProjectDoc({ clientId: new Types.ObjectId() }),
+          ),
+      });
+
+      await expect(
+        service.assertRequestCanAccessProject(
+          { sub: other, roleName: 'Client' },
+          PID,
+        ),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('When Client accesses own project Then returns mapped project', async () => {
+      const clientOid = new Types.ObjectId();
+      mockProjectModel.findById.mockReturnValue({
+        exec: jest
+          .fn()
+          .mockResolvedValue(mockProjectDoc({ clientId: clientOid })),
+      });
+
+      const p = await service.assertRequestCanAccessProject(
+        { sub: String(clientOid), roleName: 'Client' },
+        PID,
+      );
+
+      expect(p).toMatchObject({ name: 'Projet test' });
+    });
+  });
+
+  describe('create', () => {
+    it('When saved project has clientId Then addUserProjectId is called', async () => {
+      const cid = new Types.ObjectId();
+      const savedDoc = {
+        ...mockProjectDoc(),
+        _id: new Types.ObjectId(PID),
+        clientId: cid,
+        toObject: () => mockProjectDoc({ clientId: cid }),
+      };
+      const ProjectModelCtor = Object.assign(
+        jest.fn().mockImplementation(() => ({
+          save: jest.fn().mockResolvedValue(savedDoc),
+        })),
+        {
+          find: jest.fn(),
+          findById: jest.fn(),
+          findByIdAndUpdate: jest.fn(),
+          findByIdAndDelete: jest.fn(),
+        },
+      );
+
+      const mod = await Test.createTestingModule({
+        providers: [
+          ProjectsService,
+          { provide: getModelToken(Project.name), useValue: ProjectModelCtor },
+          { provide: TasksService, useValue: mockTasksService },
+          { provide: UsersService, useValue: mockUsersService },
+        ],
+      }).compile();
+      const svc = mod.get(ProjectsService);
+
+      await svc.create({
+        name: 'P',
+        type: 'Construction',
+        createdBy: USER_ID,
+        clientId: String(cid),
+      } as import('./dto/create-project.dto').CreateProjectDto);
+
+      expect(mockUsersService.addUserProjectId).toHaveBeenCalledWith(
+        String(cid),
+        String(savedDoc._id),
+      );
+    });
+  });
+
+  describe('findOne', () => {
+    it('When project exists Then returns it', async () => {
+      const doc = mockProjectDoc();
+      mockProjectModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(doc),
+      });
+
+      const result = await service.findOne(PID);
       expect(result).toBeDefined();
     });
 
-    it('should throw NotFoundException when project does not exist', async () => {
-      mockProjectModel.findById.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
+    it('When project does not exist Then NotFoundException', async () => {
+      mockProjectModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
 
-      await expect(service.findOne('aaaaaaaaaaaaaaaaaaaaaaaa')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne(PID)).rejects.toThrow(NotFoundException);
     });
 
-    it('should throw BadRequestException for invalid ObjectId', async () => {
+    it('When id is invalid Then BadRequestException', async () => {
       await expect(service.findOne('invalid-id')).rejects.toThrow();
     });
   });
 
-  describe('update — spentBudget', () => {
-    it('doit utiliser $set explicite pour ne pas écraser spentBudget', async () => {
+  describe('update', () => {
+    beforeEach(() => {
+      const existing = mockProjectDoc();
+      mockProjectModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(existing),
+      });
+    });
+
+    it('When patching name Then uses $set', async () => {
       const doc = mockProjectDoc({ status: 'En cours', spentBudget: 5000 });
       mockProjectModel.findByIdAndUpdate.mockReturnValue({
         exec: jest.fn().mockResolvedValue(doc),
       });
 
-      await service.update('aaaaaaaaaaaaaaaaaaaaaaaa', { name: 'Nouveau nom' });
+      await service.update(PID, { name: 'Nouveau nom' });
 
       expect(mockProjectModel.findByIdAndUpdate).toHaveBeenCalledWith(
-        'aaaaaaaaaaaaaaaaaaaaaaaa',
+        PID,
         { $set: { name: 'Nouveau nom' } },
         { new: true },
       );
     });
 
-    it('should call markAllTasksCompletedForProject when status becomes Terminé', async () => {
+    it('When status becomes Terminé Then markAllTasksCompletedForProject', async () => {
       const doc = mockProjectDoc({ status: 'Terminé' });
       mockProjectModel.findByIdAndUpdate.mockReturnValue({
         exec: jest.fn().mockResolvedValue(doc),
       });
 
-      await service.update('aaaaaaaaaaaaaaaaaaaaaaaa', { status: 'Terminé' });
+      await service.update(PID, { status: 'Terminé' });
 
-      expect(mockTasksService.markAllTasksCompletedForProject).toHaveBeenCalledWith(
-        'aaaaaaaaaaaaaaaaaaaaaaaa',
-      );
+      expect(
+        mockTasksService.markAllTasksCompletedForProject,
+      ).toHaveBeenCalledWith(PID);
     });
 
-    it('should NOT call markAllTasksCompletedForProject for other status', async () => {
+    it('When status not Terminé Then no mass-complete', async () => {
       const doc = mockProjectDoc({ status: 'En cours' });
       mockProjectModel.findByIdAndUpdate.mockReturnValue({
         exec: jest.fn().mockResolvedValue(doc),
       });
 
-      await service.update('aaaaaaaaaaaaaaaaaaaaaaaa', { status: 'En cours' });
+      await service.update(PID, { status: 'En cours' });
 
-      expect(mockTasksService.markAllTasksCompletedForProject).not.toHaveBeenCalled();
+      expect(
+        mockTasksService.markAllTasksCompletedForProject,
+      ).not.toHaveBeenCalled();
     });
 
-    it('should throw NotFoundException when updating non-existent project', async () => {
+    it('When findById finds nothing Then NotFoundException', async () => {
+      mockProjectModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
+
+      await expect(service.update(PID, { name: 'X' })).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('When findByIdAndUpdate returns null Then NotFoundException', async () => {
+      mockProjectModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(mockProjectDoc()),
+      });
       mockProjectModel.findByIdAndUpdate.mockReturnValue({
         exec: jest.fn().mockResolvedValue(null),
       });
 
-      await expect(
-        service.update('aaaaaaaaaaaaaaaaaaaaaaaa', { name: 'Updated' }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.update(PID, { name: 'Updated' })).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('remove', () => {
-    it('should delete project and cascade-delete tasks', async () => {
+    it('When project exists Then deletes tasks and project', async () => {
       const doc = mockProjectDoc();
-      mockProjectModel.findById.mockReturnValue({ exec: jest.fn().mockResolvedValue(doc) });
+      mockProjectModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(doc),
+      });
       mockProjectModel.findByIdAndDelete.mockReturnValue({
         exec: jest.fn().mockResolvedValue(doc),
       });
 
-      await service.remove('aaaaaaaaaaaaaaaaaaaaaaaa');
+      await service.remove(PID);
 
-      expect(mockTasksService.deleteByProjectId).toHaveBeenCalledWith('aaaaaaaaaaaaaaaaaaaaaaaa');
+      expect(mockTasksService.deleteByProjectId).toHaveBeenCalledWith(PID);
     });
 
-    it('should throw NotFoundException when project does not exist', async () => {
-      mockProjectModel.findById.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
+    it('When project not found Then NotFoundException', async () => {
+      mockProjectModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
 
-      await expect(service.remove('aaaaaaaaaaaaaaaaaaaaaaaa')).rejects.toThrow(NotFoundException);
+      await expect(service.remove(PID)).rejects.toThrow(NotFoundException);
     });
   });
 });

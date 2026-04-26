@@ -6,7 +6,12 @@
         "build": "next build",
         "dev": "next dev",
         "lint": "eslint .",
-        "start": "next start"
+        "start": "next start",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "test:ci": "cross-env CI=1 vitest run --reporter=default --reporter=junit --outputFile=../reports/junit/frontend-junit.xml",
+        "test:cov": "vitest run --coverage",
+        "test:cov:ci": "cross-env CI=1 vitest run --coverage --reporter=default --reporter=junit --outputFile=../reports/junit/frontend-junit.xml"
     },
     "dependencies": {
         "@google/generative-ai": "^0.24.1",
@@ -74,12 +79,22 @@
     },
     "devDependencies": {
         "@tailwindcss/postcss": "^4.1.9",
+        "@testing-library/dom": "^10.4.1",
+        "@testing-library/jest-dom": "^6.9.1",
+        "@testing-library/react": "^16.3.2",
+        "@testing-library/user-event": "^14.6.1",
         "@types/node": "^22",
         "@types/react": "^19",
         "@types/react-dom": "^19",
+        "@vitejs/plugin-react": "^4.3.4",
+        "@vitest/coverage-v8": "^2.1.4",
+        "cross-env": "^7.0.3",
+        "jsdom": "^24.1.3",
         "postcss": "^8.5",
         "tailwindcss": "^4.1.9",
         "tw-animate-css": "1.3.3",
-        "typescript": "^5"
+        "typescript": "^5",
+        "vite": "^5.4.11",
+        "vitest": "^2.1.4"
     }
 }

@@ -102,7 +102,9 @@ export class TasksService implements OnModuleInit {
    * Si au moins 3 tâches du projet ont une endDate dépassée et ne sont pas « Terminé »,
    * le projet passe en « En retard » (projets déjà « Terminé » non modifiés).
    */
-  private async syncProjectBehindScheduleFromTasks(projectId: string): Promise<void> {
+  private async syncProjectBehindScheduleFromTasks(
+    projectId: string,
+  ): Promise<void> {
     this.assertValidObjectId(projectId, 'projectId');
 
     const projectObjectId = new Types.ObjectId(projectId);
@@ -136,7 +138,11 @@ export class TasksService implements OnModuleInit {
 
     const now = new Date();
     const lateCount = unique.filter((t) =>
-      isTaskLateAt(t.endDate, t.status != null ? String(t.status) : undefined, now),
+      isTaskLateAt(
+        t.endDate,
+        t.status != null ? String(t.status) : undefined,
+        now,
+      ),
     ).length;
 
     if (lateCount >= 3) {
@@ -222,7 +228,9 @@ export class TasksService implements OnModuleInit {
 
   private assertValidObjectId(id: string, fieldName: string) {
     if (!isValidObjectId(id)) {
-      throw new BadRequestException(`${fieldName} must be a valid MongoDB ObjectId`);
+      throw new BadRequestException(
+        `${fieldName} must be a valid MongoDB ObjectId`,
+      );
     }
   }
 
@@ -252,7 +260,12 @@ export class TasksService implements OnModuleInit {
     durationDays: number;
     recomputeEndFromDuration?: boolean;
   }): { startDate?: Date; endDate?: Date } {
-    const { startDateInput, endDateInput, durationDays, recomputeEndFromDuration } = params;
+    const {
+      startDateInput,
+      endDateInput,
+      durationDays,
+      recomputeEndFromDuration,
+    } = params;
 
     if (!Number.isFinite(durationDays) || durationDays < 1) {
       throw new BadRequestException('duration must be at least 1 day');
@@ -302,7 +315,9 @@ export class TasksService implements OnModuleInit {
       .exec();
 
     if (dependencies.length !== normalized.length) {
-      throw new BadRequestException('One or more dependsOn task ids do not exist');
+      throw new BadRequestException(
+        'One or more dependsOn task ids do not exist',
+      );
     }
 
     for (const dependency of dependencies) {
@@ -402,7 +417,10 @@ export class TasksService implements OnModuleInit {
     });
 
     const created = await doc.save();
-    await created.populate('assignedTo', 'firstName lastName role availability');
+    await created.populate(
+      'assignedTo',
+      'firstName lastName role availability',
+    );
     await this.recalculateProjectSpentBudget(createTaskDto.projectId);
     await this.syncProjectBehindScheduleFromTasks(createTaskDto.projectId);
     return created;
@@ -449,12 +467,14 @@ export class TasksService implements OnModuleInit {
     if (updateTaskDto.projectId) {
       this.assertValidObjectId(updateTaskDto.projectId, 'projectId');
     }
-    if (updateTaskDto.assignedTo && typeof updateTaskDto.assignedTo === 'string') {
+    if (
+      updateTaskDto.assignedTo &&
+      typeof updateTaskDto.assignedTo === 'string'
+    ) {
       this.assertValidObjectId(updateTaskDto.assignedTo, 'assignedTo');
     }
 
-    const effectiveProjectId =
-      updateTaskDto.projectId ?? oldProjectId;
+    const effectiveProjectId = updateTaskDto.projectId ?? oldProjectId;
 
     const effectiveDependsOn = Array.isArray(updateTaskDto.dependsOn)
       ? updateTaskDto.dependsOn

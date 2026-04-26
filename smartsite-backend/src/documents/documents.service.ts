@@ -2,8 +2,15 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { ProjectDocument, DocumentDocument } from './documents.schema';
-import { DocumentVersion, DocumentVersionDocument } from './document-versions.schema';
-import { CreateDocumentDto, UpdateDocumentDto, AddVersionDto } from './dto/create-document.dto';
+import {
+  DocumentVersion,
+  DocumentVersionDocument,
+} from './document-versions.schema';
+import {
+  CreateDocumentDto,
+  UpdateDocumentDto,
+  AddVersionDto,
+} from './dto/create-document.dto';
 
 @Injectable()
 export class DocumentsService {
@@ -30,14 +37,16 @@ export class DocumentsService {
   }
 
   async search(query: string): Promise<ProjectDocument[]> {
-    return this.documentModel.find({
-      isActive: true,
-      $or: [
-        { title: { $regex: query, $options: 'i' } },
-        { description: { $regex: query, $options: 'i' } },
-        { category: { $regex: query, $options: 'i' } },
-      ],
-    }).exec();
+    return this.documentModel
+      .find({
+        isActive: true,
+        $or: [
+          { title: { $regex: query, $options: 'i' } },
+          { description: { $regex: query, $options: 'i' } },
+          { category: { $regex: query, $options: 'i' } },
+        ],
+      })
+      .exec();
   }
 
   async findOne(id: string): Promise<ProjectDocument> {
@@ -46,7 +55,10 @@ export class DocumentsService {
     return document;
   }
 
-  async update(id: string, updateDocumentDto: UpdateDocumentDto): Promise<ProjectDocument> {
+  async update(
+    id: string,
+    updateDocumentDto: UpdateDocumentDto,
+  ): Promise<ProjectDocument> {
     const updated = await this.documentModel
       .findByIdAndUpdate(id, updateDocumentDto, { new: true })
       .exec();
@@ -65,7 +77,10 @@ export class DocumentsService {
 
   // ─── Gestion des versions ─────────────────────────────────────
 
-  async addVersion(documentId: string, addVersionDto: AddVersionDto): Promise<DocumentVersion> {
+  async addVersion(
+    documentId: string,
+    addVersionDto: AddVersionDto,
+  ): Promise<DocumentVersion> {
     const document = await this.findOne(documentId);
 
     // Incrémenter le numéro de version
@@ -88,6 +103,9 @@ export class DocumentsService {
   }
 
   async getVersions(documentId: string): Promise<DocumentVersion[]> {
-    return this.versionModel.find({ documentId }).sort({ versionNumber: -1 }).exec();
+    return this.versionModel
+      .find({ documentId })
+      .sort({ versionNumber: -1 })
+      .exec();
   }
 }

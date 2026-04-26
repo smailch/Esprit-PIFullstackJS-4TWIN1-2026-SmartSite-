@@ -4,7 +4,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 /** Modèle vision Groq pour ce service uniquement (ne pas lire GROQ_VISION_MODEL : souvent réutilisé ailleurs dans .env). */
-const DEFAULT_GROQ_PROGRESS_PHOTO_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
+const DEFAULT_GROQ_PROGRESS_PHOTO_MODEL =
+  'meta-llama/llama-4-scout-17b-16e-instruct';
 
 @Injectable()
 export class AiEstimationService {
@@ -54,33 +55,36 @@ Respond with ONLY a number between 0 and 100. No explanation.`;
         this.config.get<string>('GROQ_PROGRESS_PHOTO_MODEL')?.trim() ||
         DEFAULT_GROQ_PROGRESS_PHOTO_MODEL;
 
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        'https://api.groq.com/openai/v1/chat/completions',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: visionModel,
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  {
+                    type: 'image_url',
+                    image_url: { url: dataUrl },
+                  },
+                  {
+                    type: 'text',
+                    text: prompt,
+                  },
+                ],
+              },
+            ],
+            max_tokens: 10,
+            temperature: 0,
+          }),
         },
-        body: JSON.stringify({
-          model: visionModel,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'image_url',
-                  image_url: { url: dataUrl },
-                },
-                {
-                  type: 'text',
-                  text: prompt,
-                },
-              ],
-            },
-          ],
-          max_tokens: 10,
-          temperature: 0,
-        }),
-      });
+      );
 
       if (!response.ok) {
         const errorBody = await response.text();
@@ -106,7 +110,6 @@ Respond with ONLY a number between 0 and 100. No explanation.`;
       }
 
       return percentage;
-
     } catch (error) {
       console.error('Groq Estimation error:', error);
       return 0;

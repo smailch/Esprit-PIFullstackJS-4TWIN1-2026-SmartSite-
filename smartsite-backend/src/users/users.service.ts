@@ -1,20 +1,22 @@
 import { Transporter } from './../../node_modules/@types/nodemailer/index.d';
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { User, } from './users.schema';
+import { User } from './users.schema';
 import { UserDocument } from '../users/users.schema';
 import { Model, Types } from 'mongoose';
 import { Role, RoleDocument } from '../roles/roles.schema';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import * as nodemailer from 'nodemailer';
-console.log("MAIL_USER =", process.env.MAIL_USER);
-console.log("MAIL_PASS =", process.env.MAIL_PASS);
+console.log('MAIL_USER =', process.env.MAIL_USER);
+console.log('MAIL_PASS =', process.env.MAIL_PASS);
 
 @Injectable()
 export class UsersService {
-  
-
   constructor(
     @InjectModel(User.name)
     private userModel: Model<UserDocument>,
@@ -56,7 +58,6 @@ export class UsersService {
 
   // CREATE
   async create(data: any): Promise<User> {
-
     // 🔐 Hash password
     const salt = await bcrypt.genSalt(10);
     data.password = await bcrypt.hash(data.password, salt);
@@ -70,9 +71,9 @@ export class UsersService {
   }
 
   // READ ALL (sans password)
- async findAll(): Promise<User[]> {
-  return this.userModel.find().populate('roleId').select('-password');
-}
+  async findAll(): Promise<User[]> {
+    return this.userModel.find().populate('roleId').select('-password');
+  }
 
   // READ ONE (sans password)
   async findOne(id: string): Promise<User> {
@@ -87,7 +88,6 @@ export class UsersService {
 
   // UPDATE
   async update(id: string, data: any): Promise<User> {
-
     if (data.password) {
       const salt = await bcrypt.genSalt(10);
       data.password = await bcrypt.hash(data.password, salt);
@@ -108,42 +108,38 @@ export class UsersService {
     return { message: 'User deleted successfully' };
   }
 
+  async forgotPassword(email: string) {
+    const user = await this.userModel.findOne({ email });
 
+    if (!user) {
+      throw new NotFoundException("Ce mail n'est pas valide");
+    }
 
-async forgotPassword(email: string) {
+    const resetToken = crypto.randomBytes(32).toString('hex');
 
-  const user = await this.userModel.findOne({ email });
+    user.resetToken = resetToken;
+    user.resetTokenExpiration = new Date(Date.now() + 3600000);
 
-  if (!user) {
-    throw new NotFoundException("Ce mail n'est pas valide");
-  }
+    await user.save();
 
-  const resetToken = crypto.randomBytes(32).toString('hex');
+    try {
+      const transporter = nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
+        auth: {
+          user: 'ahmedallaya@gmail.com',
+          pass: 'geoxxnbjwubxpmbu',
+        },
+      });
 
-  user.resetToken = resetToken;
-  user.resetTokenExpiration = new Date(Date.now() + 3600000);
+      const resetLink = `http://localhost:3000/reset-password/${resetToken}`;
 
-  await user.save();
-
-  try {
-
-    const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: "ahmedallaya@gmail.com",      
-    pass: "geoxxnbjwubxpmbu",    
-  },
-});
-
-    const resetLink = `http://localhost:3000/reset-password/${resetToken}`;
-
-    await transporter.sendMail({
-      from: `"Smartsite" <${process.env.MAIL_USER}>`,
-      to: user.email,
-      subject: 'Smartsite – Réinitialisation de votre mot de passe',
-      html: `
+      await transporter.sendMail({
+        from: `"Smartsite" <${process.env.MAIL_USER}>`,
+        to: user.email,
+        subject: 'Smartsite – Réinitialisation de votre mot de passe',
+        html: `
         <!DOCTYPE html><html><head><meta charset="UTF-8"/>
         <style>
           body{font-family:'Segoe UI',sans-serif;background:#f4f6fb;margin:0;padding:0}
@@ -166,60 +162,64 @@ async forgotPassword(email: string) {
           <div class="footer">© 2025 Smartsite – Tous droits réservés</div>
         </div></body></html>
       `,
+      });
+    } catch (error) {
+      console.error('Erreur SMTP:', error);
+      throw new Error('EMAIL_SEND_FAILED');
+    }
+
+    return { message: 'EMAIL_SENT' };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    const user = await this.userModel.findOne({
+      resetToken: token,
+      resetTokenExpiration: { $gt: new Date() },
     });
 
-  } catch (error) {
-    console.error("Erreur SMTP:", error);
-    throw new Error("EMAIL_SEND_FAILED");
+    if (!user) {
+      throw new Error('TOKEN_INVALID');
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+
+    user.resetToken = null;
+    user.resetTokenExpiration = null;
+
+    await user.save();
+
+    return { message: 'PASSWORD_UPDATED' };
   }
 
-  return { message: 'EMAIL_SENT' };
-}
-
-
-
-
-async resetPassword(token: string, newPassword: string) {
-
-  const user = await this.userModel.findOne({
-    resetToken: token,
-    resetTokenExpiration: { $gt: new Date() },
-  });
-
-  if (!user) {
-    throw new Error('TOKEN_INVALID');
+  async findByEmail(email: string) {
+    return this.userModel.findOne({ email });
   }
 
-  const salt = await bcrypt.genSalt(10);
-  user.password = await bcrypt.hash(newPassword, salt);
+  async saveFaceDescriptor(
+    userId: string,
+    descriptor: number[],
+  ): Promise<void> {
+    console.log(
+      'saveFaceDescriptor userId:',
+      userId,
+      'descriptor length:',
+      descriptor?.length,
+    );
+    const result = await this.userModel.findByIdAndUpdate(
+      userId,
+      { faceDescriptor: descriptor },
+      { new: true },
+    );
+    console.log(
+      'Updated user faceDescriptor length:',
+      result?.faceDescriptor?.length,
+    );
+  }
 
-  user.resetToken = null;
-  user.resetTokenExpiration = null;
-
-  await user.save();
-
-  return { message: 'PASSWORD_UPDATED' };
-}
-
-async findByEmail(email: string) {
-  return this.userModel.findOne({ email });
-}
-
-async saveFaceDescriptor(userId: string, descriptor: number[]): Promise<void> {
-  console.log('saveFaceDescriptor userId:', userId, 'descriptor length:', descriptor?.length);
-  const result = await this.userModel.findByIdAndUpdate(
-    userId,
-    { faceDescriptor: descriptor },
-    { new: true }
-  );
-  console.log('Updated user faceDescriptor length:', result?.faceDescriptor?.length);
-}
-
-async getAllUsersWithFace() {
-  return this.userModel.find({
-    faceDescriptor: { $exists: true, $ne: [] }
-  });
-}
-
-
+  async getAllUsersWithFace() {
+    return this.userModel.find({
+      faceDescriptor: { $exists: true, $ne: [] },
+    });
+  }
 }

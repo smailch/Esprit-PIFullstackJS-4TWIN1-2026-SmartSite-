@@ -31,14 +31,14 @@ export class PaymentsController {
     return this.paymentsService.create(dto);
   }
 
-@Post('stripe-session')
-async createStripeSession(@Body() dto: CreateStripeSessionDto) {
-  if (dto.method !== 'CARD') {
-    throw new BadRequestException('Stripe only for CARD payments');
-  }
+  @Post('stripe-session')
+  async createStripeSession(@Body() dto: CreateStripeSessionDto) {
+    if (dto.method !== 'CARD') {
+      throw new BadRequestException('Stripe only for CARD payments');
+    }
 
-  return this.stripeService.createCheckoutSession(dto.invoiceId);
-}
+    return this.stripeService.createCheckoutSession(dto.invoiceId);
+  }
 
   // 🔥 CONFIRM PAYMENT
   @Post('confirm')

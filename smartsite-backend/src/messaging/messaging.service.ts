@@ -60,175 +60,190 @@ For all other questions, answer helpfully in English.
 
 @Injectable()
 export class MessagingService {
-    private groq: any;
+  private groq: any;
 
-    constructor(
-        @InjectModel(Message.name)
-        private messageModel: Model<MessageDocument>,
-    ) {
-        this.groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+  constructor(
+    @InjectModel(Message.name)
+    private messageModel: Model<MessageDocument>,
+  ) {
+    this.groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+  }
+
+  // ── Client envoie une question ────────────────────────────────
+  async askQuestion(
+    clientId: string,
+    clientName: string,
+    question: string,
+    conversationId: string,
+    sessionHistory: Array<{ role: string; content: string }>,
+  ) {
+    // 1. Appel Groq avec contexte
+    const messages = [
+      { role: 'system', content: SMARTSITE_KNOWLEDGE },
+      ...sessionHistory.map((m) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      })),
+      {
+        role: 'user' as const,
+        content: `Client name: ${clientName}\n\nQuestion: ${question}`,
+      },
+    ];
+
+    let aiResponse = '';
+    try {
+      const response = await this.groq.chat.completions.create({
+        model: process.env.GROQ_MODEL || 'llama-3.1-8b-instant',
+        messages,
+        max_tokens: 300,
+      });
+      aiResponse =
+        response.choices[0]?.message?.content?.trim() ||
+        'I could not process your request.';
+    } catch {
+      aiResponse =
+        'AI service temporarily unavailable. Your message will be forwarded to the Director.';
     }
 
-    // ── Client envoie une question ────────────────────────────────
-    async askQuestion(
-        clientId: string,
-        clientName: string,
-        question: string,
-        conversationId: string,
-        sessionHistory: Array<{ role: string; content: string }>,
-    ) {
-        // 1. Appel Groq avec contexte
-        const messages = [
-            { role: 'system', content: SMARTSITE_KNOWLEDGE },
-            ...sessionHistory.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
-            { role: 'user' as const, content: `Client name: ${clientName}\n\nQuestion: ${question}` },
-        ];
+    // 2. Vérifier si transfert nécessaire
+    const transferKeywords = [
+      '[TRANSFER_TO_DIRECTOR]',
+      'TRANSFERING CALL TO DIRECTOR',
+      'TRANSFER COMPLETE',
+      'transferring you to the Director',
+      'connect you with the Director',
+      'transfer',
+    ];
+    const needsTransfer =
+      aiResponse.includes('[TRANSFER_TO_DIRECTOR]') ||
+      transferKeywords.some((kw) =>
+        aiResponse.toLowerCase().includes(kw.toLowerCase()),
+      );
 
-        let aiResponse = '';
-        try {
-            const response = await this.groq.chat.completions.create({
-                model: process.env.GROQ_MODEL || 'llama-3.1-8b-instant',
-                messages,
-                max_tokens: 300,
-            });
-            aiResponse = response.choices[0]?.message?.content?.trim() || 'I could not process your request.';
-        } catch {
-            aiResponse = 'AI service temporarily unavailable. Your message will be forwarded to the Director.';
-        }
+    if (needsTransfer) {
+      // Nettoyer la réponse
+      const cleanResponse =
+        aiResponse.replace('[TRANSFER_TO_DIRECTOR]', '').trim() ||
+        'Your request requires attention from our Director. I have forwarded your message and you will receive a response shortly.';
 
-        // 2. Vérifier si transfert nécessaire
-        const transferKeywords = [
-            '[TRANSFER_TO_DIRECTOR]',
-            'TRANSFERING CALL TO DIRECTOR',
-            'TRANSFER COMPLETE',
-            'transferring you to the Director',
-            'connect you with the Director',
-            'transfer',
-        ];
-        const needsTransfer =
-            aiResponse.includes('[TRANSFER_TO_DIRECTOR]') ||
-            transferKeywords.some(kw => aiResponse.toLowerCase().includes(kw.toLowerCase()));
+      // Sauvegarder en MongoDB — message client + réponse AI
+      await this.messageModel.create({
+        conversationId,
+        clientId: new Types.ObjectId(clientId),
+        clientName,
+        senderRole: 'Client',
+        content: question,
+        transferredToDirector: true,
+        status: 'pending',
+      });
 
-        if (needsTransfer) {
-            // Nettoyer la réponse
-            const cleanResponse = aiResponse.replace('[TRANSFER_TO_DIRECTOR]', '').trim() ||
-                'Your request requires attention from our Director. I have forwarded your message and you will receive a response shortly.';
+      await this.messageModel.create({
+        conversationId,
+        clientId: new Types.ObjectId(clientId),
+        clientName,
+        senderRole: 'AI',
+        content: cleanResponse,
+        transferredToDirector: true,
+        status: 'pending',
+      });
 
-            // Sauvegarder en MongoDB — message client + réponse AI
-            await this.messageModel.create({
-                conversationId,
-                clientId: new Types.ObjectId(clientId),
-                clientName,
-                senderRole: 'Client',
-                content: question,
-                transferredToDirector: true,
-                status: 'pending',
-            });
+      return {
+        response: cleanResponse,
+        transferredToDirector: true,
+        conversationId,
+      };
+    }
 
-            await this.messageModel.create({
-                conversationId,
-                clientId: new Types.ObjectId(clientId),
-                clientName,
-                senderRole: 'AI',
-                content: cleanResponse,
-                transferredToDirector: true,
-                status: 'pending',
-            });
+    // 3. Réponse simple — pas de sauvegarde
+    return {
+      response: aiResponse,
+      transferredToDirector: false,
+      conversationId,
+    };
+  }
 
-            return {
-                response: cleanResponse,
-                transferredToDirector: true,
-                conversationId,
-            };
-        }
+  // ── Director voit toutes les conversations ────────────────────
+  async getAllConversations() {
+    // Grouper par conversationId
+    const messages = await this.messageModel
+      .find({ transferredToDirector: true })
+      .sort({ createdAt: 1 })
+      .populate('clientId', 'fullName email')
+      .lean();
 
-        // 3. Réponse simple — pas de sauvegarde
-        return {
-            response: aiResponse,
-            transferredToDirector: false,
-            conversationId,
+    // Grouper par conversationId
+    const grouped: Record<string, any> = {};
+    for (const msg of messages) {
+      if (!grouped[msg.conversationId]) {
+        grouped[msg.conversationId] = {
+          conversationId: msg.conversationId,
+          clientId: msg.clientId,
+          clientName: msg.clientName,
+          status: msg.status,
+          messages: [],
+          createdAt: (msg as any).createdAt,
         };
+      }
+      grouped[msg.conversationId].messages.push(msg);
+      // Status = replied si au moins un message du Director
+      if (msg.senderRole === 'Director') {
+        grouped[msg.conversationId].status = 'replied';
+      }
     }
 
-    // ── Director voit toutes les conversations ────────────────────
-    async getAllConversations() {
-        // Grouper par conversationId
-        const messages = await this.messageModel
-            .find({ transferredToDirector: true })
-            .sort({ createdAt: 1 })
-            .populate('clientId', 'fullName email')
-            .lean();
+    return Object.values(grouped).sort(
+      (a: any, b: any) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  }
 
-        // Grouper par conversationId
-        const grouped: Record<string, any> = {};
-        for (const msg of messages) {
-            if (!grouped[msg.conversationId]) {
-                grouped[msg.conversationId] = {
-                    conversationId: msg.conversationId,
-                    clientId: msg.clientId,
-                    clientName: msg.clientName,
-                    status: msg.status,
-                    messages: [],
-                    createdAt: (msg as any).createdAt,
-                };
-            }
-            grouped[msg.conversationId].messages.push(msg);
-            // Status = replied si au moins un message du Director
-            if (msg.senderRole === 'Director') {
-                grouped[msg.conversationId].status = 'replied';
-            }
-        }
+  // ── Director répond ───────────────────────────────────────────
+  async directorReply(
+    conversationId: string,
+    directorId: string,
+    directorName: string,
+    content: string,
+  ) {
+    // Vérifier que la conversation existe
+    const existing = await this.messageModel.findOne({ conversationId });
+    if (!existing) throw new NotFoundException('Conversation not found');
 
-        return Object.values(grouped).sort(
-            (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        );
-    }
+    // Sauvegarder la réponse du Director
+    const reply = await this.messageModel.create({
+      conversationId,
+      clientId: existing.clientId,
+      clientName: existing.clientName,
+      senderRole: 'Director',
+      content,
+      transferredToDirector: true,
+      status: 'replied',
+    });
 
-    // ── Director répond ───────────────────────────────────────────
-    async directorReply(
-        conversationId: string,
-        directorId: string,
-        directorName: string,
-        content: string,
-    ) {
-        // Vérifier que la conversation existe
-        const existing = await this.messageModel.findOne({ conversationId });
-        if (!existing) throw new NotFoundException('Conversation not found');
+    // Mettre à jour le status de tous les messages de cette conversation
+    await this.messageModel.updateMany(
+      { conversationId },
+      { status: 'replied' },
+    );
 
-        // Sauvegarder la réponse du Director
-        const reply = await this.messageModel.create({
-            conversationId,
-            clientId: existing.clientId,
-            clientName: existing.clientName,
-            senderRole: 'Director',
-            content,
-            transferredToDirector: true,
-            status: 'replied',
-        });
+    return reply;
+  }
 
-        // Mettre à jour le status de tous les messages de cette conversation
-        await this.messageModel.updateMany(
-            { conversationId },
-            { status: 'replied' },
-        );
+  // ── Client récupère sa conversation ──────────────────────────
+  async getClientConversation(clientId: string, conversationId: string) {
+    return this.messageModel
+      .find({ conversationId, clientId: new Types.ObjectId(clientId) })
+      .sort({ createdAt: 1 })
+      .lean();
+  }
 
-        return reply;
-    }
-
-    // ── Client récupère sa conversation ──────────────────────────
-    async getClientConversation(clientId: string, conversationId: string) {
-        return this.messageModel
-            .find({ conversationId, clientId: new Types.ObjectId(clientId) })
-            .sort({ createdAt: 1 })
-            .lean();
-    }
-
-    // ── Vérifier s'il y a une réponse du Director ─────────────────
-    async checkDirectorReply(conversationId: string) {
-        const directorMessages = await this.messageModel.find({
-            conversationId,
-            senderRole: 'Director',
-        }).lean();
-        return directorMessages;
-    }
+  // ── Vérifier s'il y a une réponse du Director ─────────────────
+  async checkDirectorReply(conversationId: string) {
+    const directorMessages = await this.messageModel
+      .find({
+        conversationId,
+        senderRole: 'Director',
+      })
+      .lean();
+    return directorMessages;
+  }
 }

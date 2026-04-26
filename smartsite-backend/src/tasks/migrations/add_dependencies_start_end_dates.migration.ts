@@ -48,7 +48,9 @@ async function runMigration(): Promise<void> {
   try {
     const db = mongoose.connection.db;
     if (!db) {
-      throw new Error('MongoDB connection is established but db handle is unavailable.');
+      throw new Error(
+        'MongoDB connection is established but db handle is unavailable.',
+      );
     }
 
     const tasksCollection = db.collection<TaskRaw>('tasks');
@@ -69,17 +71,20 @@ async function runMigration(): Promise<void> {
       }
     }
 
-    const cursor = tasksCollection.find({}, {
-      projection: {
-        _id: 1,
-        projectId: 1,
-        createdAt: 1,
-        duration: 1,
-        dependsOn: 1,
-        startDate: 1,
-        endDate: 1,
+    const cursor = tasksCollection.find(
+      {},
+      {
+        projection: {
+          _id: 1,
+          projectId: 1,
+          createdAt: 1,
+          duration: 1,
+          dependsOn: 1,
+          startDate: 1,
+          endDate: 1,
+        },
       },
-    });
+    );
 
     const bulkOps: Array<{
       updateOne: {
@@ -107,7 +112,7 @@ async function runMigration(): Promise<void> {
       if (!startDate) {
         const fromTaskCreatedAt = toValidDate(task.createdAt);
         const fromProjectStart = task.projectId
-          ? projectStartById.get(task.projectId.toString()) ?? null
+          ? (projectStartById.get(task.projectId.toString()) ?? null)
           : null;
 
         startDate = fromTaskCreatedAt ?? fromProjectStart ?? new Date();
@@ -119,10 +124,14 @@ async function runMigration(): Promise<void> {
       if (!currentEnd) {
         const durationDays = Math.max(
           1,
-          Number.isFinite(task.duration) ? Math.round(task.duration as number) : 1,
+          Number.isFinite(task.duration)
+            ? Math.round(task.duration as number)
+            : 1,
         );
         const safeStart = startDate ?? new Date();
-        setPayload.endDate = new Date(safeStart.getTime() + durationDays * MS_PER_DAY);
+        setPayload.endDate = new Date(
+          safeStart.getTime() + durationDays * MS_PER_DAY,
+        );
       }
 
       if (Object.keys(setPayload).length > 0) {
@@ -135,18 +144,21 @@ async function runMigration(): Promise<void> {
       }
 
       if (bulkOps.length >= 500) {
-        const result = await tasksCollection.bulkWrite(bulkOps, { ordered: false });
+        const result = await tasksCollection.bulkWrite(bulkOps, {
+          ordered: false,
+        });
         updated += result.modifiedCount;
         bulkOps.length = 0;
       }
     }
 
     if (bulkOps.length > 0) {
-      const result = await tasksCollection.bulkWrite(bulkOps, { ordered: false });
+      const result = await tasksCollection.bulkWrite(bulkOps, {
+        ordered: false,
+      });
       updated += result.modifiedCount;
     }
 
-    // eslint-disable-next-line no-console
     console.log(
       `[Task Migration] Completed. scanned=${scanned}, modified=${updated}, timestamp=${new Date().toISOString()}`,
     );
@@ -157,7 +169,6 @@ async function runMigration(): Promise<void> {
 
 if (require.main === module) {
   runMigration().catch((error: unknown) => {
-    // eslint-disable-next-line no-console
     console.error('[Task Migration] Failed:', error);
     process.exitCode = 1;
   });

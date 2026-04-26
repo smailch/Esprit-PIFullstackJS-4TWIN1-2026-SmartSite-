@@ -80,6 +80,7 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
 
   return (
     <style
+      // Recharts theming: CSS custom properties from app chart config (hex), not user HTML.
       dangerouslySetInnerHTML={{
         __html: Object.entries(THEMES)
           .map(

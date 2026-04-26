@@ -1,0 +1,120 @@
+# CI/CD GitHub Actions — PiSmartSite
+
+Dépôt monorepo : **Backend** NestJS (`smartsite-backend/`), **Frontend** Next.js (`smarsite-frontend/`).
+
+## Démarrage pas à pas (à la suite d’un test local OK)
+
+1. **Avoir le code sur GitHub**  
+   Crée un dépôt vide (sans README si tu importes un dossier existant) ou connecte le dossier :  
+   `git init` (si besoin) → `git add .` → `git commit -m "chore: CI/CD"` → `git remote add origin https://github.com/TON_COMPTE/TON_REPO.git` → `git branch -M main` → `git push -u origin main`.  
+   Toute la branche `main` doit contenir le dossier `.github/workflows/`.
+
+2. **Premier run des workflows CI**  
+   Sur **GitHub → Actions**, vérifie que **Backend CI** et **Frontend CI** se sont lancés sur ton dernier push. Ouvre chaque run : tout doit être vert. Si un seul a tourné (fichiers modifiés seulement d’un côté), c’est normal à cause des filtres `paths` : refais un commit qui touche `smartsite-backend` et l’autre qui touche `smarsite-frontend` pour valider les deux, ou un commit qui modifie les deux dossiers.
+
+3. **Variables (frontend)**  
+   **Settings → Secrets and variables → Actions → Variables** (onglet *Repository variables*).  
+   Crée `NEXT_PUBLIC_API_URL` = URL **publique** de ton API en prod (ex. `https://api.mondomaine.com`, sans `/` final si ton code l’attend comme ça). Sans ça, le build CI utilise le défaut `http://127.0.0.1:3200` (suffit pour vérifier le pipeline, pas pour coller à la vraie prod).
+
+4. **Déploiement réel (CD)**  
+   - Sur **Render / Railway** (ou autre) : crée le service **backend** (dossier `smartsite-backend`, build `npm run build`, start `node dist/main.js` ou `npm run start:prod` selon ta config). Récupère l’**URL du Deploy hook**.  
+   - Sur **Vercel / Netlify** (ou autre) : importe le repo, racine `smarsite-frontend`, variables `NEXT_PUBLIC_*` comme en prod, récupère le **hook** de redéploiement.  
+   Puis sur GitHub : **Settings → Secrets and variables → Actions → Secrets** :  
+   `BACKEND_DEPLOY_HOOK_URL` = URL du hook backend  
+   `FRONTEND_DEPLOY_HOOK_URL` = URL du hook frontend  
+
+5. **Vérifier le CD**  
+   Pousse un petit commit sur `main` (ou merge). Ordre : **CI vert** (Backend + Frontend concernés) → peu après, **Backend CD** / **Frontend CD** (uniquement si le CI partenaire a réussi, et branche `main` ou `master`). Vérifie sur ton hébergeur qu’un **nouveau déploiement** a été déclenché.
+
+6. **(Option) Protéger `main`**  
+   **Settings → Rules → Rulesets** (ou *Branch protection*) : exiger le passage des workflows **Backend CI** et **Frontend CI** avant merge.
+
+7. **En cas d’échec**  
+   Ouvre l’onglet **Actions** → workflow rouge → clique sur l’étape en erreur. Compare avec [la section *Vérification locale*](#vérification-locale) (mêmes commandes que dans le YAML).
+
+## Pipelines (4)
+
+| Fichier | Rôle |
+|--------|------|
+| `.github/workflows/backend-ci.yml` | `npm ci` → `lint:ci` (signal, ne bloque pas) → `test:ci` → `build` |
+| `.github/workflows/frontend-ci.yml` | `npm ci` → `test:ci` → `build` (voir ci-dessous pour ESLint) |
+| `.github/workflows/backend-cd.yml` | Après **succès** de « Backend CI » sur `main` / `master` (push) |
+| `.github/workflows/frontend-cd.yml` | Après **succès** de « Frontend CI » sur `main` / `master` (push) |
+
+Les **tests sont obligatoires** : toute commande de test en échec fait échouer le job (pipeline rouge).
+
+### ESLint
+
+- **Backend** : `npm run lint:ci` est exécuté dans le CI avec `continue-on-error: true` tant que le code a une dette ESLint importante. Les **tests** et le **build** restent bloquants. Pour exiger ESLint en dur sur `main`, retire `continue-on-error` sur l’étape « ESLint » dans `backend-ci.yml` une fois les violations corrigées.
+- **Frontend** : le script `lint` (`eslint .`) n’a pas `eslint` dans `package.json` et Next.js 16 ne fournit plus `next lint` dans le CLI utilisé ici. Ajoute `eslint`, `eslint-config-next` et un `eslint.config.*` si tu veux du lint en CI, ou un script `typecheck` basé sur `tsc` une fois les erreurs TypeScript corrigées.
+
+## Déclenchement des CD
+
+- Les workflows **CD** utilisent `workflow_run` : ils ne s’exécutent **que** lorsque le workflow CI ciblé s’est **terminé avec succès** (`conclusion == success`).
+- Filtre branche : **uniquement** `main` ou `master`, et seulement pour un événement **push** (pas de déploiement automatique sur les PR).
+
+## Filtres `paths` (CI)
+
+- Modifier uniquement le frontend ne lance **pas** le CI backend (et inversement).
+- Pour forcer un run complet, toucher le fichier de workflow concerné ou un fichier sous le bon dossier.
+
+## Secrets recommandés (déploiement par hook)
+
+1. Ouvre **GitHub → Settings → Secrets and variables → Actions → New repository secret**.
+
+| Secret | Utilisé par | Description |
+|--------|-------------|-------------|
+| `BACKEND_DEPLOY_HOOK_URL` | Backend CD | URL de **Deploy Hook** (ex. [Render](https://render.com/docs/deploys#deploy-an-image), Railway, autre) |
+| `FRONTEND_DEPLOY_HOOK_URL` | Frontend CD | Hook **Vercel**, **Netlify**, [Firebase](https://firebase.google.com/docs/hosting/github-integration), etc. |
+
+- Si le secret est **absent**, le job CD **affiche un avertissement** et se termine sans erreur (tu peux configurer le hook plus tard). Pour un déploiement **obligatoire** en production, supprime le `exit 0` conditionnel ou ajoute un secret factice pour faire échouer le run tant que l’URL n’est pas posée (à adapter selon ta politique).
+
+## Variables pour le build frontend
+
+- **`NEXT_PUBLIC_API_URL`** : obligatoire au build (prérendu). Le workflow définit un défaut `http://127.0.0.1:3200` si la **variable de dépôt** `NEXT_PUBLIC_API_URL` est vide. Pour cibler ton API réelle en CI, crée la variable dans **Settings → Secrets and variables → Actions → Variables** (onglet *Repository variables*).
+- Autres `NEXT_PUBLIC_*` : ajoute-les dans `env` du job `build-and-test` dans `frontend-ci.yml` si nécessaire.
+
+## Branche par défaut
+
+Adapte les branches dans les 4 YAML si ton dépôt utilise un autre nom (ex. `develop` seulement pour l’intégration : déjà présent pour le **CI** ; le **CD** cible seulement `main` / `master`).
+
+## Fichier `environment` (optionnel)
+
+Tu peux réintroduire un bloc `environment: name: production` sur les jobs CD si tu veux des **règles de protection** (approbation, délais) dans GitHub Environments.
+
+## Vérification locale
+
+```bash
+# Backend
+cd smartsite-backend
+npm ci
+npm run lint:ci
+npm run test:ci
+npm run build
+```
+
+Rapport JUnit côté backend : la variable `JEST_JUNIT_OUTPUT_DIR` est définie dans GitHub Actions. En **local** (optionnel) :
+
+```powershell
+cd smartsite-backend
+$env:JEST_JUNIT_OUTPUT_DIR = "..\reports\junit"
+npm run test:ci
+```
+
+**Windows / `npm ci` en erreur (EPERM sur `bcrypt.node`)** : ferme l’IDE et les processus `node` qui touchent ce fichier, exclu `node_modules` de l’antivirus, ou en administrateur : `Remove-Item -Recurse -Force node_modules; npm install`.
+
+```bash
+# Frontend
+cd smarsite-frontend
+npm ci
+npm run test:ci
+$env:NEXT_PUBLIC_API_URL="http://127.0.0.1:3200"; npm run build   # PowerShell
+# export NEXT_PUBLIC_API_URL=http://127.0.0.1:3200 && npm run build   # bash
+```
+
+Pour la couverture backend en local (Sonar) : ` $env:JEST_JUNIT_OUTPUT_DIR = "..\reports\junit"; npm run test:cov:ci` avant `sonar:prep` si tu veux le XML au même emplacement.
+
+## Tests (aperçu)
+
+- **Backend** : Jest, fichiers `*.spec.ts` sous `smartsite-backend/src/`. Exemple : `app.controller.spec.ts` (route d’accueil).
+- **Frontend** : Vitest + Testing Library, fichiers `*.test.ts(x)` (ex. `components/__tests__/`, `lib/__tests__/`, routes `app/api/**/__tests__/`).

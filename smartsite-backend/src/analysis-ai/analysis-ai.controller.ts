@@ -1,4 +1,12 @@
-import { Body, Controller, Param, Post, Request, UseGuards, BadRequestException } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Param,
+  Post,
+  Request,
+  UseGuards,
+  BadRequestException,
+} from '@nestjs/common';
 import { AnalysisAiService } from './analysis-ai.service';
 import { AnalyzeProjectDto } from './dto/analyze-project.dto';
 import { AssistantInitialReportDto } from './dto/assistant-initial-report.dto';
@@ -31,7 +39,10 @@ export class AnalysisAiController {
     @Param('projectId') projectId: string,
     @Body() _body: AnalyzeProjectDto,
   ): Promise<ProjectAiInsightsResponseDto> {
-    await this.projectsService.assertRequestCanAccessProject(this.getUser(req), projectId);
+    await this.projectsService.assertRequestCanAccessProject(
+      this.getUser(req),
+      projectId,
+    );
     return this.analysisAiService.generateInsights(projectId);
   }
 
@@ -41,7 +52,10 @@ export class AnalysisAiController {
     @Param('projectId') projectId: string,
     @Body() _body: AssistantInitialReportDto,
   ): Promise<{ report: string }> {
-    await this.projectsService.assertRequestCanAccessProject(this.getUser(req), projectId);
+    await this.projectsService.assertRequestCanAccessProject(
+      this.getUser(req),
+      projectId,
+    );
     return this.analysisAiService.initialAssistantReport(projectId);
   }
 
@@ -51,7 +65,10 @@ export class AnalysisAiController {
     @Param('projectId') projectId: string,
     @Body() body: ProjectAssistantChatDto,
   ): Promise<{ reply: string }> {
-    await this.projectsService.assertRequestCanAccessProject(this.getUser(req), projectId);
+    await this.projectsService.assertRequestCanAccessProject(
+      this.getUser(req),
+      projectId,
+    );
     return this.analysisAiService.chatProject(projectId, body);
   }
 }

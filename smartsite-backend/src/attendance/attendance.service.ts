@@ -28,8 +28,7 @@ export class AttendanceService {
 
     const onJob = (job.assignedResources ?? []).some(
       (ar) =>
-        ar.type === 'Human' &&
-        String(ar.resourceId) === String(dto.resourceId),
+        ar.type === 'Human' && String(ar.resourceId) === String(dto.resourceId),
     );
     if (!onJob) {
       throw new BadRequestException(

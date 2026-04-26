@@ -3,7 +3,7 @@ import {
   Get,
   Post,
   Put,
-  UploadedFile, 
+  UploadedFile,
   Delete,
   UseInterceptors,
   Body,
@@ -14,12 +14,15 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { DocumentsService } from './documents.service';
-import { CreateDocumentDto, UpdateDocumentDto, AddVersionDto } from './dto/create-document.dto';
+import {
+  CreateDocumentDto,
+  UpdateDocumentDto,
+  AddVersionDto,
+} from './dto/create-document.dto';
 
 @Controller('documents')
 export class DocumentsController {
   constructor(private readonly documentsService: DocumentsService) {}
-
 
   // NOUVELLE ROUTE : Upload avec fichier local
   @Post('upload')
@@ -28,7 +31,8 @@ export class DocumentsController {
       storage: diskStorage({
         destination: './uploads',
         filename: (req, file, cb) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
           const ext = extname(file.originalname);
           cb(null, `document-${uniqueSuffix}${ext}`);
         },
@@ -56,8 +60,6 @@ export class DocumentsController {
       category: body.category || 'other',
     });
   }
-
-
 
   // POST /documents
   @Post()
@@ -91,7 +93,10 @@ export class DocumentsController {
 
   // PUT /documents/:id
   @Put(':id')
-  update(@Param('id') id: string, @Body() updateDocumentDto: UpdateDocumentDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateDocumentDto: UpdateDocumentDto,
+  ) {
     return this.documentsService.update(id, updateDocumentDto);
   }
 

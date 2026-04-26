@@ -60,7 +60,9 @@ export const aiAnalysisResponsePayloadSchema = z.object({
   repetitiveWorkAndAutomation: z.array(z.string().min(1)).max(8),
 });
 
-export type AiAnalysisResponsePayload = z.infer<typeof aiAnalysisResponsePayloadSchema>;
+export type AiAnalysisResponsePayload = z.infer<
+  typeof aiAnalysisResponsePayloadSchema
+>;
 
 export const projectAiInsightsResponseSchema = z.object({
   projectId: z.string().min(1),
@@ -69,7 +71,9 @@ export const projectAiInsightsResponseSchema = z.object({
   analysis: aiAnalysisResponsePayloadSchema,
 });
 
-export type ProjectAiInsightsResponse = z.infer<typeof projectAiInsightsResponseSchema>;
+export type ProjectAiInsightsResponse = z.infer<
+  typeof projectAiInsightsResponseSchema
+>;
 
 export function parseAiAnalysisPayload(raw: unknown): AiAnalysisPayload {
   return aiAnalysisPayloadSchema.parse(raw);

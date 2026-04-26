@@ -67,7 +67,9 @@ export class UsersController {
    */
   @UseGuards(JwtAuthGuard)
   @Get('client-accounts')
-  listClientAccounts(@Request() req: { user?: { sub?: string; roleName?: string } }) {
+  listClientAccounts(
+    @Request() req: { user?: { sub?: string; roleName?: string } },
+  ) {
     if (String(req.user?.roleName ?? '').trim() === 'Client') {
       throw new ForbiddenException('Not allowed to list client accounts');
     }

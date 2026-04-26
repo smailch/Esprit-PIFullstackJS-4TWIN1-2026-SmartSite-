@@ -13,6 +13,18 @@ import { TasksService } from '../tasks/tasks.service';
 import { AttendanceService } from '../attendance/attendance.service';
 import { JobsService } from '../jobs/jobs.service';
 
+/** `AnalysisAiService` parses the Groq body via `res.text()` (not `res.json()`). */
+function mockGroqOkResponse(choiceMessageContent: string) {
+  const body = JSON.stringify({
+    choices: [{ message: { content: choiceMessageContent } }],
+  });
+  return {
+    ok: true,
+    status: 200,
+    text: async () => body,
+  } as unknown as Response;
+}
+
 describe('AnalysisAiService', () => {
   const mockProjects = { findOne: jest.fn() };
   const mockTasks = { findByProject: jest.fn() };
@@ -51,6 +63,14 @@ describe('AnalysisAiService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     fetchSpy = jest.spyOn(globalThis, 'fetch').mockReset();
+    mockConfig.get.mockImplementation(
+      <T>(key: string, defaultValue?: T): T | string | number => {
+        if (key === 'GROQ_API_KEY') return 'test-key';
+        if (key === 'GROQ_MODEL') return 'llama-3.1-8b-instant';
+        if (key === 'GROQ_TIMEOUT_MS') return 5000;
+        return defaultValue as T;
+      },
+    );
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -87,13 +107,7 @@ describe('AnalysisAiService', () => {
       },
       confidence: 0.9,
     };
-    fetchSpy.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        choices: [{ message: { content: JSON.stringify(valid) } }],
-      }),
-    } as unknown as Response);
+    fetchSpy.mockResolvedValue(mockGroqOkResponse(JSON.stringify(valid)));
 
     const r = await service.generateInsights('507f1f77bcf86cd799439099');
     expect(r.source).toBe('groq');
@@ -122,7 +136,10 @@ describe('AnalysisAiService', () => {
           title: 'R',
           impact: 'high' as const,
           action: 'A',
-          relatedTaskIds: ['507f1f77bcf86cd7994390aa', 'ffffffffffffffffffffffff'],
+          relatedTaskIds: [
+            '507f1f77bcf86cd7994390aa',
+            'ffffffffffffffffffffffff',
+          ],
         },
       ],
       nextActions: ['a', 'b', 'c'],
@@ -134,29 +151,19 @@ describe('AnalysisAiService', () => {
       },
       confidence: 0.9,
     };
-    fetchSpy.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        choices: [{ message: { content: JSON.stringify(valid) } }],
-      }),
-    } as unknown as Response);
+    fetchSpy.mockResolvedValue(mockGroqOkResponse(JSON.stringify(valid)));
 
     const r = await service.generateInsights('507f1f77bcf86cd799439099');
-    expect(r.analysis.topRisks[0].relatedTaskIds).toEqual(['507f1f77bcf86cd7994390aa']);
+    expect(r.analysis.topRisks[0].relatedTaskIds).toEqual([
+      '507f1f77bcf86cd7994390aa',
+    ]);
     expect(r.analysis.topRisks[0].relatedTasks).toEqual([
       { id: '507f1f77bcf86cd7994390aa', title: 'T1' },
     ]);
   });
 
   it('uses fallback when model output is not valid JSON', async () => {
-    fetchSpy.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        choices: [{ message: { content: 'not-json-at-all' } }],
-      }),
-    } as unknown as Response);
+    fetchSpy.mockResolvedValue(mockGroqOkResponse('not-json-at-all'));
 
     const r = await service.generateInsights('507f1f77bcf86cd799439099');
     expect(r.source).toBe('fallback');
@@ -167,7 +174,7 @@ describe('AnalysisAiService', () => {
     fetchSpy.mockResolvedValue({
       ok: false,
       status: 429,
-      json: async () => ({}),
+      text: async () => '{}',
     } as unknown as Response);
 
     let caught: unknown;
@@ -177,16 +184,21 @@ describe('AnalysisAiService', () => {
       caught = e;
     }
     expect(caught).toBeInstanceOf(HttpException);
-    expect((caught as HttpException).getStatus()).toBe(HttpStatus.TOO_MANY_REQUESTS);
+    expect((caught as HttpException).getStatus()).toBe(
+      HttpStatus.TOO_MANY_REQUESTS,
+    );
   });
 
   it('retries with GROQ_API_KEY_FALLBACK when primary returns 429', async () => {
-    mockConfig.get.mockImplementation(<T>(key: string, defaultValue?: T): T | string | number => {
-      if (key === 'GROQ_MODEL') return 'llama-3.1-8b-instant';
-      if (key === 'GROQ_TIMEOUT_MS') return 5000;
-      if (key === 'GROQ_API_KEY_FALLBACK') return 'fallback-key';
-      return defaultValue as T;
-    });
+    mockConfig.get.mockImplementation(
+      <T>(key: string, defaultValue?: T): T | string | number => {
+        if (key === 'GROQ_API_KEY') return 'test-key';
+        if (key === 'GROQ_MODEL') return 'llama-3.1-8b-instant';
+        if (key === 'GROQ_TIMEOUT_MS') return 5000;
+        if (key === 'GROQ_API_KEY_FALLBACK') return 'fallback-key';
+        return defaultValue as T;
+      },
+    );
     const valid = {
       summary: 'Synthèse',
       topRisks: [{ title: 'R', impact: 'high' as const, action: 'A' }],
@@ -203,15 +215,9 @@ describe('AnalysisAiService', () => {
       .mockResolvedValueOnce({
         ok: false,
         status: 429,
-        json: async () => ({}),
+        text: async () => '{}',
       } as unknown as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          choices: [{ message: { content: JSON.stringify(valid) } }],
-        }),
-      } as unknown as Response);
+      .mockResolvedValueOnce(mockGroqOkResponse(JSON.stringify(valid)));
 
     const r = await service.generateInsights('507f1f77bcf86cd799439099');
     expect(r.source).toBe('groq');
@@ -219,60 +225,57 @@ describe('AnalysisAiService', () => {
     const authHeaders = fetchSpy.mock.calls.map(
       (c) => (c[1] as RequestInit)?.headers as Record<string, string>,
     );
-    expect(authHeaders.some((h) => h?.Authorization === 'Bearer test-key')).toBe(true);
-    expect(authHeaders.some((h) => h?.Authorization === 'Bearer fallback-key')).toBe(true);
-    mockConfig.get.mockImplementation(<T>(key: string, defaultValue?: T): T | string | number => {
-      if (key === 'GROQ_MODEL') return 'llama-3.1-8b-instant';
-      if (key === 'GROQ_TIMEOUT_MS') return 5000;
-      return defaultValue as T;
-    });
+    expect(
+      authHeaders.some((h) => h?.Authorization === 'Bearer test-key'),
+    ).toBe(true);
+    expect(
+      authHeaders.some((h) => h?.Authorization === 'Bearer fallback-key'),
+    ).toBe(true);
   });
 
   it('throws 429 when primary and fallback are both rate limited', async () => {
-    mockConfig.get.mockImplementation(<T>(key: string, defaultValue?: T): T | string | number => {
-      if (key === 'GROQ_MODEL') return 'llama-3.1-8b-instant';
-      if (key === 'GROQ_TIMEOUT_MS') return 5000;
-      if (key === 'GROQ_API_KEY_FALLBACK') return 'fallback-key';
-      return defaultValue as T;
-    });
+    mockConfig.get.mockImplementation(
+      <T>(key: string, defaultValue?: T): T | string | number => {
+        if (key === 'GROQ_API_KEY') return 'test-key';
+        if (key === 'GROQ_MODEL') return 'llama-3.1-8b-instant';
+        if (key === 'GROQ_TIMEOUT_MS') return 5000;
+        if (key === 'GROQ_API_KEY_FALLBACK') return 'fallback-key';
+        return defaultValue as T;
+      },
+    );
     fetchSpy.mockResolvedValue({
       ok: false,
       status: 429,
-      json: async () => ({}),
+      text: async () => '{}',
     } as unknown as Response);
 
-    await expect(service.generateInsights('507f1f77bcf86cd799439099')).rejects.toBeInstanceOf(
-      HttpException,
-    );
-    mockConfig.get.mockImplementation(<T>(key: string, defaultValue?: T): T | string | number => {
-      if (key === 'GROQ_MODEL') return 'llama-3.1-8b-instant';
-      if (key === 'GROQ_TIMEOUT_MS') return 5000;
-      return defaultValue as T;
-    });
+    await expect(
+      service.generateInsights('507f1f77bcf86cd799439099'),
+    ).rejects.toBeInstanceOf(HttpException);
   });
 
   it('throws BadGatewayException after invalid JSON from Groq error responses handled', async () => {
     fetchSpy.mockResolvedValue({
       ok: false,
       status: 500,
-      json: async () => ({}),
+      text: async () => '{}',
     } as unknown as Response);
 
-    await expect(service.generateInsights('507f1f77bcf86cd799439099')).rejects.toBeInstanceOf(
-      BadGatewayException,
-    );
+    await expect(
+      service.generateInsights('507f1f77bcf86cd799439099'),
+    ).rejects.toBeInstanceOf(BadGatewayException);
   });
 
   it('throws UnauthorizedException on 401', async () => {
     fetchSpy.mockResolvedValue({
       ok: false,
       status: 401,
-      json: async () => ({}),
+      text: async () => '{}',
     } as unknown as Response);
 
-    await expect(service.generateInsights('507f1f77bcf86cd799439099')).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
+    await expect(
+      service.generateInsights('507f1f77bcf86cd799439099'),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
   it('cas 5: écrase les chiffres erronés du LLM par les métriques backend', async () => {
@@ -296,13 +299,9 @@ describe('AnalysisAiService', () => {
       },
       confidence: 0.9,
     };
-    fetchSpy.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        choices: [{ message: { content: JSON.stringify(badFromModel) } }],
-      }),
-    } as unknown as Response);
+    fetchSpy.mockResolvedValue(
+      mockGroqOkResponse(JSON.stringify(badFromModel)),
+    );
 
     const r = await service.generateInsights('507f1f77bcf86cd799439099');
     expect(r.source).toBe('groq');
@@ -317,17 +316,13 @@ describe('AnalysisAiService', () => {
       spentBudget: 45000,
     });
 
-    fetchSpy.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        choices: [{ message: { content: 'not-json' } }],
-      }),
-    } as unknown as Response);
+    fetchSpy.mockResolvedValue(mockGroqOkResponse('not-json'));
 
     const r = await service.generateInsights('507f1f77bcf86cd799439099');
     expect(r.source).toBe('fallback');
-    expect(r.analysis.budgetDelayTradeoff.estimatedBudgetDeltaPercent).toBe(-10);
+    expect(r.analysis.budgetDelayTradeoff.estimatedBudgetDeltaPercent).toBe(
+      -10,
+    );
     expect(r.analysis.budgetDelayTradeoff.estimatedDelayDays).toBe(0);
     expect(r.analysis.budgetDelayTradeoff.recommendedMode).toBe('equilibre');
     expect(r.analysis.budgetDelayTradeoff.rationale).toContain('-10');
@@ -353,16 +348,12 @@ describe('AnalysisAiService', () => {
       },
       confidence: 0.9,
     };
-    fetchSpy.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        choices: [{ message: { content: JSON.stringify(valid) } }],
-      }),
-    } as unknown as Response);
+    fetchSpy.mockResolvedValue(mockGroqOkResponse(JSON.stringify(valid)));
 
     const r = await service.generateInsights('507f1f77bcf86cd799439099');
-    expect(r.analysis.budgetDelayTradeoff.estimatedBudgetDeltaPercent).toBeNull();
+    expect(
+      r.analysis.budgetDelayTradeoff.estimatedBudgetDeltaPercent,
+    ).toBeNull();
   });
 
   it('cas 4 intégré: échéance dépassée et non terminé => delay aligné backend', async () => {
@@ -386,13 +377,7 @@ describe('AnalysisAiService', () => {
       },
       confidence: 0.9,
     };
-    fetchSpy.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        choices: [{ message: { content: JSON.stringify(valid) } }],
-      }),
-    } as unknown as Response);
+    fetchSpy.mockResolvedValue(mockGroqOkResponse(JSON.stringify(valid)));
 
     const r = await service.generateInsights('507f1f77bcf86cd799439099');
     expect(r.analysis.budgetDelayTradeoff.estimatedDelayDays).toBe(14);
@@ -411,13 +396,7 @@ describe('AnalysisAiService', () => {
   });
 
   it('chatProject returns Groq reply', async () => {
-    fetchSpy.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        choices: [{ message: { content: 'Réponse assistant.' } }],
-      }),
-    } as unknown as Response);
+    fetchSpy.mockResolvedValue(mockGroqOkResponse('Réponse assistant.'));
 
     const r = await service.chatProject('507f1f77bcf86cd799439099', {
       messages: [{ role: 'user', content: 'Résume le projet.' }],
@@ -426,13 +405,7 @@ describe('AnalysisAiService', () => {
   });
 
   it('initialAssistantReport returns Groq report', async () => {
-    fetchSpy.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        choices: [{ message: { content: '## Projet\nRapport test.' } }],
-      }),
-    } as unknown as Response);
+    fetchSpy.mockResolvedValue(mockGroqOkResponse('## Projet\nRapport test.'));
 
     const r = await service.initialAssistantReport('507f1f77bcf86cd799439099');
     expect(r.report).toBe('## Projet\nRapport test.');

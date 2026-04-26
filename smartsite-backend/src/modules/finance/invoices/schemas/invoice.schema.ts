@@ -5,7 +5,6 @@ export type InvoiceDocument = Invoice & Document;
 
 @Schema({ timestamps: true })
 export class Invoice {
-
   @Prop({ type: Types.ObjectId, ref: 'Project', required: true })
   projectId: Types.ObjectId;
 

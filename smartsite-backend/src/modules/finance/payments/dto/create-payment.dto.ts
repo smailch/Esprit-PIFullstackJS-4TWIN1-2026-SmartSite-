@@ -9,7 +9,6 @@ import {
 } from 'class-validator';
 
 export class CreatePaymentDto {
-
   @IsMongoId()
   @IsNotEmpty()
   invoiceId: string;

@@ -249,7 +249,10 @@ Règles pour "dependsOnIndices" (obligatoire pour chaque tâche, tableau d'entie
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-          "HTTP-Referer": "http://localhost:3000",
+          "HTTP-Referer":
+            process.env.OPENROUTER_REFERER_URL?.trim() ||
+            process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+            "http://localhost:3000",
           "X-OpenRouter-Title": "SmartSite Tasks Generator",
         },
         body: JSON.stringify({

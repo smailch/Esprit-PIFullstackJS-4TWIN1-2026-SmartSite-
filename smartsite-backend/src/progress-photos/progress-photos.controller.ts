@@ -17,7 +17,10 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { ProgressPhotosService } from './progress-photos.service';
-import { CreateProgressPhotoDto, ValidatePhotoDto } from './dto/create-progress-photo.dto';
+import {
+  CreateProgressPhotoDto,
+  ValidatePhotoDto,
+} from './dto/create-progress-photo.dto';
 import { AiEstimationService } from './ai-estimation.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ProjectsService } from '../projects/projects.service';
@@ -43,7 +46,9 @@ export class ProgressPhotosController {
 
   private rejectIfClient(roleName: string | undefined) {
     if (ProjectsService.isClientRole(roleName)) {
-      throw new ForbiddenException('This action is not available for client accounts');
+      throw new ForbiddenException(
+        'This action is not available for client accounts',
+      );
     }
   }
 
@@ -53,7 +58,8 @@ export class ProgressPhotosController {
       storage: diskStorage({
         destination: './uploads/progress-photos',
         filename: (req, file, cb) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
           const ext = extname(file.originalname);
           cb(null, `photo-${uniqueSuffix}${ext}`);
         },
@@ -73,16 +79,21 @@ export class ProgressPhotosController {
 
     let estimatedProgress = 0;
     try {
-      estimatedProgress = await this.aiEstimationService.estimateProgress(photoUrl);
+      estimatedProgress =
+        await this.aiEstimationService.estimateProgress(photoUrl);
       console.log(`AI estimated progress: ${estimatedProgress}%`);
     } catch (error) {
       console.error('AI estimation failed, using 0%', error);
     }
 
     const taskId =
-      typeof body.taskId === 'string' && body.taskId.trim() ? body.taskId.trim() : undefined;
+      typeof body.taskId === 'string' && body.taskId.trim()
+        ? body.taskId.trim()
+        : undefined;
     const jobId =
-      typeof body.jobId === 'string' && body.jobId.trim() ? body.jobId.trim() : undefined;
+      typeof body.jobId === 'string' && body.jobId.trim()
+        ? body.jobId.trim()
+        : undefined;
 
     return this.progressPhotosService.create({
       projectId: body.projectId,

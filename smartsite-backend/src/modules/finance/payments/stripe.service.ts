@@ -28,45 +28,45 @@ export class StripeService {
   }
 
   async createCheckoutSession(invoiceId: string) {
-  if (!this.stripe) {
-    throw new BadRequestException(
-      'Stripe is not configured. Set STRIPE_SECRET_KEY in .env',
-    );
-  }
-  const invoice = await this.invoiceModel.findById(invoiceId);
+    if (!this.stripe) {
+      throw new BadRequestException(
+        'Stripe is not configured. Set STRIPE_SECRET_KEY in .env',
+      );
+    }
+    const invoice = await this.invoiceModel.findById(invoiceId);
 
-  if (!invoice) {
-    throw new NotFoundException('Invoice not found');
-  }
+    if (!invoice) {
+      throw new NotFoundException('Invoice not found');
+    }
 
-  const session = await this.stripe.checkout.sessions.create({
-    payment_method_types: ['card'],
-    mode: 'payment',
+    const session = await this.stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'payment',
 
-    line_items: [
-      {
-        price_data: {
-          currency: 'usd',
-          product_data: {
-            name: `Invoice ${invoice._id}`,
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: `Invoice ${invoice._id}`,
+            },
+            unit_amount: Math.round(invoice.amount * 100),
           },
-          unit_amount: Math.round(invoice.amount * 100),
+          quantity: 1,
         },
-        quantity: 1,
+      ],
+
+      success_url: `http://localhost:3000/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `http://localhost:3000/cancel`,
+
+      metadata: {
+        invoiceId: invoice._id.toString(),
       },
-    ],
+    });
 
-    success_url: `http://localhost:3000/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `http://localhost:3000/cancel`,
-
-    metadata: {
-      invoiceId: invoice._id.toString(),
-    },
-  });
-
-  return {
-    url: session.url,
-    sessionId: session.id, // 🔥 important
-  };
-}
+    return {
+      url: session.url,
+      sessionId: session.id, // 🔥 important
+    };
+  }
 }

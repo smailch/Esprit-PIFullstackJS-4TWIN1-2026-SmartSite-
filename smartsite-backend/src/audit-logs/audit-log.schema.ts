@@ -32,8 +32,8 @@ export class AuditLog {
   @Prop({ default: false })
   suspicious!: boolean;
 
-@Prop({ type: String, default: null })
-reason!: string | null;
+  @Prop({ type: String, default: null })
+  reason!: string | null;
 
   @Prop({ default: false })
   read!: boolean;

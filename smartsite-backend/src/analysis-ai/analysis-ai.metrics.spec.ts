@@ -28,8 +28,12 @@ describe('analysis-ai.metrics', () => {
     it('returns null for non-finite budget or spent', () => {
       expect(computeEstimatedBudgetDeltaPercent(Number.NaN, 1)).toBeNull();
       expect(computeEstimatedBudgetDeltaPercent(100, Number.NaN)).toBeNull();
-      expect(computeEstimatedBudgetDeltaPercent(100, Number.POSITIVE_INFINITY)).toBeNull();
-      expect(computeEstimatedBudgetDeltaPercent(Number.POSITIVE_INFINITY, 100)).toBeNull();
+      expect(
+        computeEstimatedBudgetDeltaPercent(100, Number.POSITIVE_INFINITY),
+      ).toBeNull();
+      expect(
+        computeEstimatedBudgetDeltaPercent(Number.POSITIVE_INFINITY, 100),
+      ).toBeNull();
     });
 
     it('treats undefined/null spent as 0', () => {

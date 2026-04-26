@@ -20,6 +20,8 @@ export class AddStartEndDatesMigration {
       }
       await project.save();
     }
-    console.log('Migration completed: start_date and end_date added to all projects.');
+    console.log(
+      'Migration completed: start_date and end_date added to all projects.',
+    );
   }
 }

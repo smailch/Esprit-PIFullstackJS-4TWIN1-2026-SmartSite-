@@ -45,7 +45,8 @@ const GROQ_CHAT_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const RETRIABLE_STATUSES = new Set([500, 502, 503, 504]);
 const FALLBACK_CONFIDENCE = 0.45;
 
-const ASSISTANT_SYSTEM_PROMPT = `You are a senior construction project manager (building / renovation / maintenance). Reply in **English**, clearly and concisely (short paragraphs or brief bullet points).
+const ASSISTANT_SYSTEM_PROMPT =
+  `You are a senior construction project manager (building / renovation / maintenance). Reply in **English**, clearly and concisely (short paragraphs or brief bullet points).
 Strict rules:
 - Rely ONLY on the "Project data" JSON provided in this system message. Do not invent amounts, dates, or tasks that are not in the JSON.
 - Numeric steering fields (backendMetrics, budget, spentBudget, etc.) are authoritative; do not recalculate them.
@@ -58,7 +59,8 @@ Topics to cover depending on the user's question:
 - Automation / repetitive work: use planningSignals.repetitiveClusters and suggest checklists, task templates, cadence — do not promise integrations that do not exist.` as const;
 
 /** First report shown in the assistant; do not ask the user a question. */
-const INITIAL_REPORT_SYSTEM_PROMPT = `You are a senior construction project manager (building / renovation / maintenance). You write ONE summary report in **English**, meant to be read as-is by a user.
+const INITIAL_REPORT_SYSTEM_PROMPT =
+  `You are a senior construction project manager (building / renovation / maintenance). You write ONE summary report in **English**, meant to be read as-is by a user.
 
 Required structure (markdown ## or ### headings):
 1. **Project** — name, type, location, status, start/end dates if present, budget / recorded spend if present, and one sentence on \`backendMetrics\` (estimatedBudgetDeltaPercent, estimatedDelayDays) as in the analysis (signed budget gap, delay in days).
@@ -72,7 +74,8 @@ Rules:
 - Do NOT ask the user any question (no "would you like", etc.).
 - No JSON block in the reply; light markdown allowed.` as const;
 
-const SYSTEM_PROMPT = `You are a senior construction project manager (building / renovation / maintenance). You analyze a project and its tasks.
+const SYSTEM_PROMPT =
+  `You are a senior construction project manager (building / renovation / maintenance). You analyze a project and its tasks.
 You must reply with ONLY a valid JSON object (no markdown, no surrounding text), with exactly these keys:
 {
   "summary": string (2–5 sentences),
@@ -120,7 +123,8 @@ Quality and grounding (required):
 If startDate or endDate are null, reason without treating missing dates as proven delay.
 ` as const;
 
-const ATTENDANCE_BONUS_SYSTEM_PROMPT = `You are an HR expert for construction sites. You receive **monthly** attendance data per worker. The fields "pointsMensuel", "joursOuvrables", "primeDt" and "scoreRendement" are computed by the server (authoritative). **Weekends are excluded** from attendance; the **DT** bonus is set by the server (30 pts → 50 DT ; 29 → 30 DT ; 28 → 10 DT).
+const ATTENDANCE_BONUS_SYSTEM_PROMPT =
+  `You are an HR expert for construction sites. You receive **monthly** attendance data per worker. The fields "pointsMensuel", "joursOuvrables", "primeDt" and "scoreRendement" are computed by the server (authoritative). **Weekends are excluded** from attendance; the **DT** bonus is set by the server (30 pts → 50 DT ; 29 → 30 DT ; 28 → 10 DT).
 
 Reply with ONLY a valid JSON object (no markdown). All text in **English**.
 
@@ -149,8 +153,15 @@ Rules:
 
 type PlanningSignals = {
   overdueTasks: ReadonlyArray<{ id: string; title: string; endDate: string }>;
-  blockedTasks: ReadonlyArray<{ id: string; title: string; blockedByIds: string[] }>;
-  repetitiveClusters: ReadonlyArray<{ normalizedLabel: string; taskIds: string[] }>;
+  blockedTasks: ReadonlyArray<{
+    id: string;
+    title: string;
+    blockedByIds: string[];
+  }>;
+  repetitiveClusters: ReadonlyArray<{
+    normalizedLabel: string;
+    taskIds: string[];
+  }>;
   tasksMissingDates: ReadonlyArray<{ id: string; title: string }>;
 };
 
@@ -172,12 +183,18 @@ export class AnalysisAiService {
     private readonly jobsService: JobsService,
   ) {}
 
-  async generateInsights(projectId: string): Promise<ProjectAiInsightsResponse> {
+  async generateInsights(
+    projectId: string,
+  ): Promise<ProjectAiInsightsResponse> {
     const project = await this.projectsService.findOne(projectId);
     const tasks = await this.tasksService.findByProject(projectId);
     const now = new Date();
     const backendMetrics = this.computeBackendMetrics(project, now);
-    const contextJson = this.buildProjectContext(project, tasks, backendMetrics);
+    const contextJson = this.buildProjectContext(
+      project,
+      tasks,
+      backendMetrics,
+    );
 
     let rawModelText: string;
     try {
@@ -195,8 +212,12 @@ export class AnalysisAiService {
         }
       }
       const detail =
-        err instanceof Error ? `${err.name}: ${err.message}` : this.redactError(err);
-      this.logger.error(`Groq unexpected error project=${projectId}: ${detail}`);
+        err instanceof Error
+          ? `${err.name}: ${err.message}`
+          : this.redactError(err);
+      this.logger.error(
+        `Groq unexpected error project=${projectId}: ${detail}`,
+      );
       throw new BadGatewayException(
         err instanceof Error && err.message
           ? `Groq request failed — ${err.message}`
@@ -212,7 +233,13 @@ export class AnalysisAiService {
       const analysis = parseAiAnalysisPayload(parsed);
       this.enforceBackendBudgetDelay(analysis, backendMetrics);
       const enriched = this.enrichAnalysisRisks(analysis, tasks);
-      const finalized = this.finalizeExtendedAnalysis(enriched, project, tasks, backendMetrics, now);
+      const finalized = this.finalizeExtendedAnalysis(
+        enriched,
+        project,
+        tasks,
+        backendMetrics,
+        now,
+      );
       return projectAiInsightsResponseSchema.parse({
         projectId,
         generatedAt,
@@ -220,10 +247,22 @@ export class AnalysisAiService {
         analysis: finalized,
       });
     } catch {
-      this.logger.warn(`Invalid or incomplete Groq JSON for project=${projectId}, using deterministic fallback`);
-      const analysis = this.buildFallbackAnalysis(project, tasks, backendMetrics);
+      this.logger.warn(
+        `Invalid or incomplete Groq JSON for project=${projectId}, using deterministic fallback`,
+      );
+      const analysis = this.buildFallbackAnalysis(
+        project,
+        tasks,
+        backendMetrics,
+      );
       const enriched = this.enrichAnalysisRisks(analysis, tasks);
-      const finalized = this.finalizeExtendedAnalysis(enriched, project, tasks, backendMetrics, now);
+      const finalized = this.finalizeExtendedAnalysis(
+        enriched,
+        project,
+        tasks,
+        backendMetrics,
+        now,
+      );
       return projectAiInsightsResponseSchema.parse({
         projectId,
         generatedAt,
@@ -233,7 +272,10 @@ export class AnalysisAiService {
     }
   }
 
-  async chatProject(projectId: string, dto: ProjectAssistantChatDto): Promise<{ reply: string }> {
+  async chatProject(
+    projectId: string,
+    dto: ProjectAssistantChatDto,
+  ): Promise<{ reply: string }> {
     const trimmed = dto.messages.slice(-10);
     if (trimmed.length === 0) {
       throw new BadRequestException('messages must not be empty');
@@ -246,11 +288,18 @@ export class AnalysisAiService {
     const tasks = await this.tasksService.findByProject(projectId);
     const now = new Date();
     const backendMetrics = this.computeBackendMetrics(project, now);
-    const contextJson = this.buildProjectContext(project, tasks, backendMetrics);
+    const contextJson = this.buildProjectContext(
+      project,
+      tasks,
+      backendMetrics,
+    );
 
     const systemContent = `${ASSISTANT_SYSTEM_PROMPT}\n\nProject data (JSON):\n${contextJson}`;
 
-    const model = this.configService.get<string>('GROQ_MODEL', 'llama-3.1-8b-instant');
+    const model = this.configService.get<string>(
+      'GROQ_MODEL',
+      'llama-3.1-8b-instant',
+    );
     const res = await this.executeGroqRequest({
       model,
       temperature: 0.35,
@@ -274,11 +323,18 @@ export class AnalysisAiService {
     const tasks = await this.tasksService.findByProject(projectId);
     const now = new Date();
     const backendMetrics = this.computeBackendMetrics(project, now);
-    const contextJson = this.buildProjectContext(project, tasks, backendMetrics);
+    const contextJson = this.buildProjectContext(
+      project,
+      tasks,
+      backendMetrics,
+    );
 
     const systemContent = `${INITIAL_REPORT_SYSTEM_PROMPT}\n\nProject data (JSON):\n${contextJson}`;
 
-    const model = this.configService.get<string>('GROQ_MODEL', 'llama-3.1-8b-instant');
+    const model = this.configService.get<string>(
+      'GROQ_MODEL',
+      'llama-3.1-8b-instant',
+    );
     const res = await this.executeGroqRequest({
       model,
       temperature: 0.25,
@@ -297,7 +353,9 @@ export class AnalysisAiService {
     if (!report) {
       throw new BadGatewayException('Groq returned empty report');
     }
-    this.logger.log(`assistant initial report ok project=${projectId} length=${report.length}`);
+    this.logger.log(
+      `assistant initial report ok project=${projectId} length=${report.length}`,
+    );
     return { report };
   }
 
@@ -312,7 +370,11 @@ export class AnalysisAiService {
     const now = new Date();
     const job = await this.jobsService.findOne(jobId);
     const attendance = await this.attendanceService.findByJob(jobId);
-    const backendMetrics = aggregateMonthlyAttendanceByWorker(attendance as Attendance[], year, month);
+    const backendMetrics = aggregateMonthlyAttendanceByWorker(
+      attendance,
+      year,
+      month,
+    );
 
     if (backendMetrics.length === 0) {
       throw new BadRequestException(
@@ -347,8 +409,12 @@ export class AnalysisAiService {
         }
       }
       const detail =
-        err instanceof Error ? `${err.name}: ${err.message}` : this.redactError(err);
-      this.logger.error(`Groq unexpected error attendance job=${jobId}: ${detail}`);
+        err instanceof Error
+          ? `${err.name}: ${err.message}`
+          : this.redactError(err);
+      this.logger.error(
+        `Groq unexpected error attendance job=${jobId}: ${detail}`,
+      );
       return this.finalizeAttendanceBonusResponse(
         jobId,
         job.title,
@@ -363,8 +429,13 @@ export class AnalysisAiService {
 
     try {
       const jsonText = this.extractJsonObject(rawText);
-      const parsed = attendanceBonusAnalysisPayloadSchema.parse(JSON.parse(jsonText));
-      const merged = this.mergeAttendanceBonusWithBackend(parsed, backendMetrics);
+      const parsed = attendanceBonusAnalysisPayloadSchema.parse(
+        JSON.parse(jsonText),
+      );
+      const merged = this.mergeAttendanceBonusWithBackend(
+        parsed,
+        backendMetrics,
+      );
       return this.finalizeAttendanceBonusResponse(
         jobId,
         job.title,
@@ -376,7 +447,9 @@ export class AnalysisAiService {
         now,
       );
     } catch {
-      this.logger.warn(`Invalid Groq JSON for attendance job=${jobId}, using deterministic fallback`);
+      this.logger.warn(
+        `Invalid Groq JSON for attendance job=${jobId}, using deterministic fallback`,
+      );
       return this.finalizeAttendanceBonusResponse(
         jobId,
         job.title,
@@ -488,14 +561,18 @@ export class AnalysisAiService {
     return `Monthly scale: ${m.pointsMensuel}/30 points (${m.joursPresentsOuvrables}/${m.joursOuvrables} working days present; weekends excluded). Bonus: ${m.primeDt} DT (30 pts → 50 DT ; 29 → 30 DT ; 28 → 10 DT).`;
   }
 
-  private buildFallbackAttendanceSummary(metrics: WorkerMonthlyAttendanceMetrics[]): string {
+  private buildFallbackAttendanceSummary(
+    metrics: WorkerMonthlyAttendanceMetrics[],
+  ): string {
     if (metrics.length === 0) return 'No attendance data.';
     const top = metrics[0];
     const labelMois = `${top.mois}/${top.annee}`;
     return `Period ${labelMois}: top performer ${top.displayName} with ${top.pointsMensuel}/30 points and ${top.primeDt} DT bonus. Working days only.`;
   }
 
-  private buildFallbackRecommendations(metrics: WorkerMonthlyAttendanceMetrics[]): string[] {
+  private buildFallbackRecommendations(
+    metrics: WorkerMonthlyAttendanceMetrics[],
+  ): string[] {
     const out: string[] = [];
     const faible = metrics.filter((m) => m.tauxPresence < 0.85).length;
     if (faible > 0) {
@@ -503,8 +580,12 @@ export class AnalysisAiService {
         `${faible} profile(s) below 85% attendance on working days this month — review absences and attendance records.`,
       );
     }
-    out.push('Log attendance every working day; a day without a record counts as not present for points.');
-    out.push('Complete check-in and check-out on present days for hour tracking.');
+    out.push(
+      'Log attendance every working day; a day without a record counts as not present for points.',
+    );
+    out.push(
+      'Complete check-in and check-out on present days for hour tracking.',
+    );
     return out.slice(0, 5);
   }
 
@@ -514,22 +595,31 @@ export class AnalysisAiService {
     return {
       summary: this.buildFallbackAttendanceSummary(backendMetrics),
       recommendationsEquipe: this.buildFallbackRecommendations(backendMetrics),
-      travailleurs: backendMetrics.map((m) => this.buildFallbackTravailleurRow(m)),
+      travailleurs: backendMetrics.map((m) =>
+        this.buildFallbackTravailleurRow(m),
+      ),
       confiance: backendMetrics.length >= 3 ? 0.55 : 0.4,
     };
   }
 
-  private buildFallbackTravailleurRow(m: WorkerMonthlyAttendanceMetrics): TravailleurBonusRow {
+  private buildFallbackTravailleurRow(
+    m: WorkerMonthlyAttendanceMetrics,
+  ): TravailleurBonusRow {
     const pointsForts: string[] = [];
     if (m.joursPresentsOuvrables > 0) {
       pointsForts.push(`${m.joursPresentsOuvrables} working day(s) present`);
     }
     if (m.heuresMoyennesJourPresent != null) {
-      pointsForts.push(`Average ${m.heuresMoyennesJourPresent} h/day (present days)`);
+      pointsForts.push(
+        `Average ${m.heuresMoyennesJourPresent} h/day (present days)`,
+      );
     }
-    if (m.tauxPresence >= 0.95) pointsForts.push('Very strong attendance this month');
-    else if (m.tauxPresence >= 0.85) pointsForts.push('Good attendance on working days');
-    if (pointsForts.length === 0) pointsForts.push('Complete attendance on working days');
+    if (m.tauxPresence >= 0.95)
+      pointsForts.push('Very strong attendance this month');
+    else if (m.tauxPresence >= 0.85)
+      pointsForts.push('Good attendance on working days');
+    if (pointsForts.length === 0)
+      pointsForts.push('Complete attendance on working days');
 
     return {
       resourceId: m.resourceId,
@@ -542,8 +632,14 @@ export class AnalysisAiService {
     };
   }
 
-  private async callGroqJson(systemPrompt: string, userContent: string): Promise<string> {
-    const model = this.configService.get<string>('GROQ_MODEL', 'llama-3.1-8b-instant');
+  private async callGroqJson(
+    systemPrompt: string,
+    userContent: string,
+  ): Promise<string> {
+    const model = this.configService.get<string>(
+      'GROQ_MODEL',
+      'llama-3.1-8b-instant',
+    );
     const res = await this.executeGroqRequest({
       model,
       temperature: 0.25,
@@ -562,23 +658,35 @@ export class AnalysisAiService {
   private computeBackendMetrics(
     project: Project,
     now: Date,
-  ): { estimatedBudgetDeltaPercent: number | null; estimatedDelayDays: number } {
+  ): {
+    estimatedBudgetDeltaPercent: number | null;
+    estimatedDelayDays: number;
+  } {
     const endDate = project.endDate ? new Date(project.endDate) : null;
     return {
       estimatedBudgetDeltaPercent: computeEstimatedBudgetDeltaPercent(
         project.budget,
         project.spentBudget,
       ),
-      estimatedDelayDays: computeEstimatedDelayDays(endDate, project.status, now),
+      estimatedDelayDays: computeEstimatedDelayDays(
+        endDate,
+        project.status,
+        now,
+      ),
     };
   }
 
   private enforceBackendBudgetDelay(
     analysis: AiAnalysisPayload,
-    metrics: { estimatedBudgetDeltaPercent: number | null; estimatedDelayDays: number },
+    metrics: {
+      estimatedBudgetDeltaPercent: number | null;
+      estimatedDelayDays: number;
+    },
   ): void {
-    analysis.budgetDelayTradeoff.estimatedBudgetDeltaPercent = metrics.estimatedBudgetDeltaPercent;
-    analysis.budgetDelayTradeoff.estimatedDelayDays = metrics.estimatedDelayDays;
+    analysis.budgetDelayTradeoff.estimatedBudgetDeltaPercent =
+      metrics.estimatedBudgetDeltaPercent;
+    analysis.budgetDelayTradeoff.estimatedDelayDays =
+      metrics.estimatedDelayDays;
   }
 
   private enrichAnalysisRisks(
@@ -624,7 +732,10 @@ export class AnalysisAiService {
     enriched: AiAnalysisResponsePayload,
     project: Project,
     tasks: TaskDocument[],
-    backendMetrics: { estimatedBudgetDeltaPercent: number | null; estimatedDelayDays: number },
+    backendMetrics: {
+      estimatedBudgetDeltaPercent: number | null;
+      estimatedDelayDays: number;
+    },
     now: Date,
   ): AiAnalysisResponsePayload {
     const signals = this.buildPlanningSignals(tasks, now);
@@ -635,7 +746,10 @@ export class AnalysisAiService {
     const delayAnalysis = groqDelayOk
       ? {
           summary: enriched.delayAnalysis.summary.trim(),
-          contributingFactors: enriched.delayAnalysis.contributingFactors.slice(0, 8),
+          contributingFactors: enriched.delayAnalysis.contributingFactors.slice(
+            0,
+            8,
+          ),
         }
       : this.buildHeuristicDelayAnalysis(signals, backendMetrics, tasks);
 
@@ -657,7 +771,10 @@ export class AnalysisAiService {
     };
   }
 
-  private buildPlanningSignals(tasks: TaskDocument[], now: Date): PlanningSignals {
+  private buildPlanningSignals(
+    tasks: TaskDocument[],
+    now: Date,
+  ): PlanningSignals {
     const byId = new Map(tasks.map((t) => [String(t._id), t]));
 
     const overdueTasks = tasks
@@ -697,11 +814,7 @@ export class AnalysisAiService {
       });
 
     const normTitle = (s: string) =>
-      s
-        .toLowerCase()
-        .replace(/\s+/g, ' ')
-        .trim()
-        .slice(0, 48);
+      s.toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 48);
 
     const buckets = new Map<string, string[]>();
     for (const t of tasks) {
@@ -712,7 +825,10 @@ export class AnalysisAiService {
     }
     const repetitiveClusters = [...buckets.entries()]
       .filter(([, ids]) => ids.length >= 2)
-      .map(([label, ids]) => ({ normalizedLabel: label, taskIds: ids.slice(0, 8) }))
+      .map(([label, ids]) => ({
+        normalizedLabel: label,
+        taskIds: ids.slice(0, 8),
+      }))
       .slice(0, 6);
 
     const tasksMissingDates = tasks
@@ -730,7 +846,10 @@ export class AnalysisAiService {
 
   private buildHeuristicDelayAnalysis(
     signals: PlanningSignals,
-    backendMetrics: { estimatedBudgetDeltaPercent: number | null; estimatedDelayDays: number },
+    backendMetrics: {
+      estimatedBudgetDeltaPercent: number | null;
+      estimatedDelayDays: number;
+    },
     tasks: TaskDocument[],
   ): { summary: string; contributingFactors: string[] } {
     const factors: string[] = [];
@@ -752,7 +871,9 @@ export class AnalysisAiService {
       typeof backendMetrics.estimatedBudgetDeltaPercent === 'number' &&
       backendMetrics.estimatedBudgetDeltaPercent > 0
     ) {
-      factors.push('Recorded budget overrun: schedule pressure if not addressed.');
+      factors.push(
+        'Recorded budget overrun: schedule pressure if not addressed.',
+      );
     }
     if (factors.length === 0) {
       factors.push(
@@ -775,7 +896,10 @@ export class AnalysisAiService {
         'No significant delay signal on project completion or task due dates at the reference date.';
     }
 
-    return { summary: summary.trim(), contributingFactors: factors.slice(0, 8) };
+    return {
+      summary: summary.trim(),
+      contributingFactors: factors.slice(0, 8),
+    };
   }
 
   private buildHeuristicPlanningSuggestions(
@@ -799,19 +923,30 @@ export class AnalysisAiService {
         'Set 2–3 intermediate milestones (delivered packages or handoffs) with formal schedule reviews.',
       );
     }
-    if (project.description && project.description.trim().length > 80 && tasks.length < 4) {
+    if (
+      project.description &&
+      project.description.trim().length > 80 &&
+      tasks.length < 4
+    ) {
       out.push(
         'Break the project description into ordered work packages (lots) for realistic sequential tracking.',
       );
     }
-    out.push('Hold a weekly steering slot (priorities, risks, documented decisions).');
+    out.push(
+      'Hold a weekly steering slot (priorities, risks, documented decisions).',
+    );
     if (out.length < 3) {
-      out.push('Re-align execution order with real dependencies after each status update.');
+      out.push(
+        'Re-align execution order with real dependencies after each status update.',
+      );
     }
     return out.slice(0, 10);
   }
 
-  private buildHeuristicAutomation(signals: PlanningSignals, tasks: TaskDocument[]): string[] {
+  private buildHeuristicAutomation(
+    signals: PlanningSignals,
+    tasks: TaskDocument[],
+  ): string[] {
     const out: string[] = [];
     for (const c of signals.repetitiveClusters.slice(0, 3)) {
       out.push(
@@ -834,7 +969,10 @@ export class AnalysisAiService {
   private buildProjectContext(
     project: Project,
     tasks: TaskDocument[],
-    backendMetrics: { estimatedBudgetDeltaPercent: number | null; estimatedDelayDays: number },
+    backendMetrics: {
+      estimatedBudgetDeltaPercent: number | null;
+      estimatedDelayDays: number;
+    },
   ): string {
     const now = new Date();
     const planningSignals = this.buildPlanningSignals(tasks, now);
@@ -843,12 +981,15 @@ export class AnalysisAiService {
     const payload = {
       name: project.name,
       description: project.description ?? '',
-      startDate: project.startDate ? new Date(project.startDate).toISOString() : null,
+      startDate: project.startDate
+        ? new Date(project.startDate).toISOString()
+        : null,
       endDate: project.endDate ? new Date(project.endDate).toISOString() : null,
       status: project.status,
       type: project.type,
       budget: project.budget ?? null,
-      spentBudget: typeof project.spentBudget === 'number' ? project.spentBudget : 0,
+      spentBudget:
+        typeof project.spentBudget === 'number' ? project.spentBudget : 0,
       location: project.location ?? '',
       createdBy: String(project.createdBy),
       backendMetrics,
@@ -904,25 +1045,38 @@ export class AnalysisAiService {
   private buildFallbackAnalysis(
     project: Project,
     tasks: TaskDocument[],
-    backendMetrics: { estimatedBudgetDeltaPercent: number | null; estimatedDelayDays: number },
+    backendMetrics: {
+      estimatedBudgetDeltaPercent: number | null;
+      estimatedDelayDays: number;
+    },
   ): AiAnalysisPayload {
     const now = new Date();
     const end = project.endDate ? new Date(project.endDate) : null;
     const status = project.status;
     const risks: AiAnalysisPayload['topRisks'] = [];
 
-    if (end !== null && !Number.isNaN(end.getTime()) && end.getTime() < now.getTime() && status !== 'Terminé') {
+    if (
+      end !== null &&
+      !Number.isNaN(end.getTime()) &&
+      end.getTime() < now.getTime() &&
+      status !== 'Terminé'
+    ) {
       const ids = this.taskIdsOverdueEnd(tasks, now);
       risks.push({
         title: 'End date passed while the project is not finished',
         impact: 'high',
-        action: 'Revisit the schedule, trim scope, or obtain a documented extension.',
+        action:
+          'Revisit the schedule, trim scope, or obtain a documented extension.',
         relatedTaskIds:
           ids.length > 0 ? ids : this.taskIdsNotDone(tasks).slice(0, 5),
       });
     }
 
-    if (typeof project.budget === 'number' && project.budget > 0 && status === 'En retard') {
+    if (
+      typeof project.budget === 'number' &&
+      project.budget > 0 &&
+      status === 'En retard'
+    ) {
       risks.push({
         title: 'Behind schedule with a defined budget: cost drift risk',
         impact: 'high',
@@ -932,14 +1086,17 @@ export class AnalysisAiService {
     }
 
     const avgProgress =
-      tasks.length > 0 ? tasks.reduce((s, t) => s + (t.progress ?? 0), 0) / tasks.length : 0;
+      tasks.length > 0
+        ? tasks.reduce((s, t) => s + (t.progress ?? 0), 0) / tasks.length
+        : 0;
     if (tasks.length >= 3 && avgProgress < 35 && status === 'En cours') {
       const ids = this.taskIdsLowProgress(tasks);
       risks.push({
         title: 'Low average progress with a significant number of tasks',
         impact: 'medium',
         action: 'Find the critical path and clear blockers on priority tasks.',
-        relatedTaskIds: ids.length > 0 ? ids : this.taskIdsNotDone(tasks).slice(0, 5),
+        relatedTaskIds:
+          ids.length > 0 ? ids : this.taskIdsNotDone(tasks).slice(0, 5),
       });
     }
 
@@ -967,13 +1124,13 @@ export class AnalysisAiService {
       risks.push({
         title: 'Governance needs structure',
         impact: 'low',
-        action: 'Run a short weekly ritual (schedule, budget, risks, decisions).',
+        action:
+          'Run a short weekly ritual (schedule, budget, risks, decisions).',
       });
     }
 
-    const { recommendedMode, rationale } = this.buildFallbackBudgetModeRationale(
-      backendMetrics,
-    );
+    const { recommendedMode, rationale } =
+      this.buildFallbackBudgetModeRationale(backendMetrics);
     const summary = this.buildFallbackSummary(project, tasks);
     const signals = this.buildPlanningSignals(tasks, now);
 
@@ -988,16 +1145,30 @@ export class AnalysisAiService {
         rationale,
       },
       confidence: this.fallbackConfidence(project, tasks),
-      delayAnalysis: this.buildHeuristicDelayAnalysis(signals, backendMetrics, tasks),
-      planningSuggestions: this.buildHeuristicPlanningSuggestions(signals, project, tasks),
-      repetitiveWorkAndAutomation: this.buildHeuristicAutomation(signals, tasks),
+      delayAnalysis: this.buildHeuristicDelayAnalysis(
+        signals,
+        backendMetrics,
+        tasks,
+      ),
+      planningSuggestions: this.buildHeuristicPlanningSuggestions(
+        signals,
+        project,
+        tasks,
+      ),
+      repetitiveWorkAndAutomation: this.buildHeuristicAutomation(
+        signals,
+        tasks,
+      ),
     };
   }
 
   private buildFallbackBudgetModeRationale(metrics: {
     estimatedBudgetDeltaPercent: number | null;
     estimatedDelayDays: number;
-  }): { recommendedMode: 'economique' | 'equilibre' | 'accelere'; rationale: string } {
+  }): {
+    recommendedMode: 'economique' | 'equilibre' | 'accelere';
+    rationale: string;
+  } {
     const delay = metrics.estimatedDelayDays;
     const d = metrics.estimatedBudgetDeltaPercent;
 
@@ -1026,7 +1197,10 @@ export class AnalysisAiService {
     };
   }
 
-  private buildFallbackSummary(project: Project, tasks: TaskDocument[]): string {
+  private buildFallbackSummary(
+    project: Project,
+    tasks: TaskDocument[],
+  ): string {
     const base = `Fallback analysis (no LLM) for "${project.name}"`;
     const tail =
       tasks.length > 0
@@ -1049,7 +1223,9 @@ export class AnalysisAiService {
         'Create main tasks from the project description (packages, milestones, order).',
       );
     } else {
-      actions.push('Identify critical-path tasks or those behind milestone dates.');
+      actions.push(
+        'Identify critical-path tasks or those behind milestone dates.',
+      );
     }
     const firstRisk = risks[0];
     if (firstRisk) {
@@ -1069,7 +1245,10 @@ export class AnalysisAiService {
   }
 
   private async callGroqChat(contextJson: string): Promise<string> {
-    const model = this.configService.get<string>('GROQ_MODEL', 'llama-3.1-8b-instant');
+    const model = this.configService.get<string>(
+      'GROQ_MODEL',
+      'llama-3.1-8b-instant',
+    );
     const started = Date.now();
     const res = await this.executeGroqRequest({
       model,
@@ -1112,7 +1291,10 @@ export class AnalysisAiService {
       throw new ForbiddenException('Groq access denied');
     }
     if (res.status === 429) {
-      throw new HttpException('Groq rate limit exceeded', HttpStatus.TOO_MANY_REQUESTS);
+      throw new HttpException(
+        'Groq rate limit exceeded',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
     }
     if (!res.ok) {
       throw new BadGatewayException(`Groq upstream error: HTTP ${res.status}`);
@@ -1127,14 +1309,19 @@ export class AnalysisAiService {
     return content;
   }
 
-  private async executeGroqRequest(body: Record<string, unknown>): Promise<Response> {
-    const primary = (this.configService.get<string>('GROQ_API_KEY') ?? '').trim();
+  private async executeGroqRequest(
+    body: Record<string, unknown>,
+  ): Promise<Response> {
+    const primary = (
+      this.configService.get<string>('GROQ_API_KEY') ?? ''
+    ).trim();
     if (!primary) {
       throw new ServiceUnavailableException(
         'Groq is not configured: set GROQ_API_KEY in smartsite-backend/.env',
       );
     }
-    const fallbackRaw = this.configService.get<string>('GROQ_API_KEY_FALLBACK')?.trim() ?? '';
+    const fallbackRaw =
+      this.configService.get<string>('GROQ_API_KEY_FALLBACK')?.trim() ?? '';
     const fallbackKey =
       fallbackRaw.length > 0 && fallbackRaw !== primary ? fallbackRaw : null;
     const timeoutMs = this.configService.get<number>('GROQ_TIMEOUT_MS', 10_000);
@@ -1157,7 +1344,9 @@ export class AnalysisAiService {
       }
     };
 
-    const withRetryOnServerError = async (apiKey: string): Promise<Response> => {
+    const withRetryOnServerError = async (
+      apiKey: string,
+    ): Promise<Response> => {
       try {
         const first = await doFetch(apiKey);
         if (RETRIABLE_STATUSES.has(first.status)) {
@@ -1181,7 +1370,9 @@ export class AnalysisAiService {
 
     const first = await withRetryOnServerError(primary);
     if (first.status === 429 && fallbackKey) {
-      this.logger.warn('Groq rate limited on primary API key; retrying with GROQ_API_KEY_FALLBACK');
+      this.logger.warn(
+        'Groq rate limited on primary API key; retrying with GROQ_API_KEY_FALLBACK',
+      );
       return withRetryOnServerError(fallbackKey);
     }
     return first;

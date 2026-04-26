@@ -28,10 +28,7 @@ export class ReportsService {
       .select('amount dueDate status')
       .lean();
 
-    const totalInvoiced = invoices.reduce(
-      (sum, i) => sum + (i.amount || 0),
-      0,
-    );
+    const totalInvoiced = invoices.reduce((sum, i) => sum + (i.amount || 0), 0);
 
     const payments = await this.paymentModel
       .find({
@@ -40,16 +37,13 @@ export class ReportsService {
       .select('amount')
       .lean();
 
-    const totalPaid = payments.reduce(
-      (sum, p) => sum + (p.amount || 0),
-      0,
-    );
+    const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
 
     const totalPending = totalInvoiced - totalPaid;
 
     const now = new Date();
 
-    const unpaidInvoices = invoices.filter(i => i.status !== 'PAID');
+    const unpaidInvoices = invoices.filter((i) => i.status !== 'PAID');
 
     const overdueInvoices = unpaidInvoices.filter(
       (i) => new Date(i.dueDate) < now,
@@ -69,10 +63,10 @@ export class ReportsService {
         return due < oldest ? due : oldest;
       }, new Date());
 
-    const diffTime = now.getTime() - oldestDate.getTime();
-const days = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      const diffTime = now.getTime() - oldestDate.getTime();
+      const days = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-oldestUnpaidInvoiceDays = Math.max(0, days);
+      oldestUnpaidInvoiceDays = Math.max(0, days);
     }
 
     return {
@@ -97,11 +91,9 @@ oldestUnpaidInvoiceDays = Math.max(0, days);
 
     const overdueRatio = summary.overdueAmount / summary.totalInvoiced;
     const unpaidRatio =
-      (summary.totalInvoiced - summary.totalPaid) /
-      summary.totalInvoiced;
+      (summary.totalInvoiced - summary.totalPaid) / summary.totalInvoiced;
 
-    const score =
-      100 - (overdueRatio * 60 + unpaidRatio * 40) * 100;
+    const score = 100 - (overdueRatio * 60 + unpaidRatio * 40) * 100;
 
     return Math.max(0, Math.min(100, Math.round(score)));
   }
@@ -198,7 +190,6 @@ FORMAT:
       ) {
         throw new Error('Invalid AI structure');
       }
-
     } catch (error: any) {
       console.error('AI ERROR:', error.message);
 
@@ -218,86 +209,80 @@ FORMAT:
     };
   }
   async generatePdf(projectId: string): Promise<Buffer> {
-  const report = await this.getAIReport(projectId);
+    const report = await this.getAIReport(projectId);
 
-  const doc = new PDFDocument({ margin: 50 });
+    const doc = new PDFDocument({ margin: 50 });
 
-  const buffers: Buffer[] = [];
+    const buffers: Buffer[] = [];
 
-  doc.on('data', buffers.push.bind(buffers));
+    doc.on('data', buffers.push.bind(buffers));
 
-  return new Promise((resolve, reject) => {
-    doc.on('end', () => {
-      resolve(Buffer.concat(buffers));
+    return new Promise((resolve, reject) => {
+      doc.on('end', () => {
+        resolve(Buffer.concat(buffers));
+      });
+
+      // =========================
+      // TITLE
+      // =========================
+      doc.fontSize(20).text('Financial Report', { align: 'center' });
+
+      doc.moveDown();
+
+      // =========================
+      // SCORE
+      // =========================
+      doc.fontSize(14).text(`Score: ${report.score}/100`);
+      doc.text(`Risk: ${report.risk}`);
+
+      doc.moveDown();
+
+      // =========================
+      // KPIs
+      // =========================
+      doc.fontSize(12);
+      doc.text(`Total Invoiced: ${report.totalInvoiced}`);
+      doc.text(`Total Paid: ${report.totalPaid}`);
+      doc.text(`Pending: ${report.totalPending}`);
+      doc.text(`Overdue: ${report.overdueAmount}`);
+
+      doc.moveDown();
+
+      // =========================
+      // SUMMARY
+      // =========================
+      doc.fontSize(14).text('Summary');
+      doc.moveDown(0.5);
+      doc.fontSize(12).text(report.ai.summary);
+
+      doc.moveDown();
+
+      // =========================
+      // ISSUES
+      // =========================
+      doc.fontSize(14).text('Issues');
+      doc.moveDown(0.5);
+
+      if (report.ai.issues.length === 0) {
+        doc.text('No issues detected');
+      } else {
+        report.ai.issues.forEach((i) => doc.text(`• ${i}`));
+      }
+
+      doc.moveDown();
+
+      // =========================
+      // RECOMMENDATIONS
+      // =========================
+      doc.fontSize(14).text('Recommendations');
+      doc.moveDown(0.5);
+
+      report.ai.recommendations.forEach((r) => doc.text(`• ${r}`));
+
+      doc.moveDown();
+      doc.text(`Confidence: ${report.ai.confidence}`);
+
+      doc.end();
     });
-
-    // =========================
-    // TITLE
-    // =========================
-    doc
-      .fontSize(20)
-      .text('Financial Report', { align: 'center' });
-
-    doc.moveDown();
-
-    // =========================
-    // SCORE
-    // =========================
-    doc
-      .fontSize(14)
-      .text(`Score: ${report.score}/100`);
-    doc.text(`Risk: ${report.risk}`);
-
-    doc.moveDown();
-
-    // =========================
-    // KPIs
-    // =========================
-    doc.fontSize(12);
-    doc.text(`Total Invoiced: ${report.totalInvoiced}`);
-    doc.text(`Total Paid: ${report.totalPaid}`);
-    doc.text(`Pending: ${report.totalPending}`);
-    doc.text(`Overdue: ${report.overdueAmount}`);
-
-    doc.moveDown();
-
-    // =========================
-    // SUMMARY
-    // =========================
-    doc.fontSize(14).text('Summary');
-    doc.moveDown(0.5);
-    doc.fontSize(12).text(report.ai.summary);
-
-    doc.moveDown();
-
-    // =========================
-    // ISSUES
-    // =========================
-    doc.fontSize(14).text('Issues');
-    doc.moveDown(0.5);
-
-    if (report.ai.issues.length === 0) {
-      doc.text('No issues detected');
-    } else {
-      report.ai.issues.forEach((i) => doc.text(`• ${i}`));
-    }
-
-    doc.moveDown();
-
-    // =========================
-    // RECOMMENDATIONS
-    // =========================
-    doc.fontSize(14).text('Recommendations');
-    doc.moveDown(0.5);
-
-    report.ai.recommendations.forEach((r) =>
-      doc.text(`• ${r}`)
-    );
-
-    doc.moveDown();
-    doc.text(`Confidence: ${report.ai.confidence}`);
-
-    doc.end();
-  });
-}
+  }
 }

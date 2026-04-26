@@ -27,11 +27,9 @@ export class EquipmentService {
   }
 
   async update(id: string, dto: UpdateEquipmentDto): Promise<Equipment> {
-    const updated = await this.equipmentModel.findByIdAndUpdate(
-      id,
-      dto,
-      { new: true },
-    );
+    const updated = await this.equipmentModel.findByIdAndUpdate(id, dto, {
+      new: true,
+    });
     if (!updated) throw new NotFoundException('Equipment not found');
     return updated;
   }

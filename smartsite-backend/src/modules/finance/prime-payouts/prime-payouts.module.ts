@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { Human, HumanSchema } from '../../../human-resources/schemas/human.schema';
+import {
+  Human,
+  HumanSchema,
+} from '../../../human-resources/schemas/human.schema';
 import { SmsModule } from '../../../sms/sms.module';
 import { PrimePayout, PrimePayoutSchema } from './schemas/prime-payout.schema';
 import { PrimePayoutsService } from './prime-payouts.service';

@@ -22,7 +22,11 @@ function extractResourceId(resourceId: unknown): string {
 
 function displayNameFromResource(resourceId: unknown): string {
   if (resourceId && typeof resourceId === 'object') {
-    const o = resourceId as { firstName?: string; lastName?: string; name?: string };
+    const o = resourceId as {
+      firstName?: string;
+      lastName?: string;
+      name?: string;
+    };
     const full = `${o.firstName ?? ''} ${o.lastName ?? ''}`.trim();
     if (full) return full;
     if (o.name?.trim()) return o.name.trim();
@@ -40,12 +44,16 @@ function parseMinutes(hhmm: string | undefined): number | null {
   if (!m) return null;
   const h = Number(m[1]);
   const min = Number(m[2]);
-  if (!Number.isFinite(h) || !Number.isFinite(min) || h > 23 || min > 59) return null;
+  if (!Number.isFinite(h) || !Number.isFinite(min) || h > 23 || min > 59)
+    return null;
   return h * 60 + min;
 }
 
 /** Durée en heures entre deux horaires HH:mm le même jour. */
-export function hoursBetween(checkIn?: string, checkOut?: string): number | null {
+export function hoursBetween(
+  checkIn?: string,
+  checkOut?: string,
+): number | null {
   const a = parseMinutes(checkIn);
   const b = parseMinutes(checkOut);
   if (a === null || b === null) return null;
@@ -91,7 +99,12 @@ export function aggregateAttendanceByWorker(
     const rid = extractResourceId(row.resourceId);
     const name = displayNameFromResource(row.resourceId);
     if (!byId.has(rid)) {
-      byId.set(rid, { present: 0, absent: 0, heuresTotales: 0, displayName: name });
+      byId.set(rid, {
+        present: 0,
+        absent: 0,
+        heuresTotales: 0,
+        displayName: name,
+      });
     }
     const agg = byId.get(rid)!;
     if (name && !agg.displayName.startsWith('Travailleur')) {
@@ -111,7 +124,9 @@ export function aggregateAttendanceByWorker(
     const totalJours = agg.present + agg.absent;
     const tauxPresence = totalJours > 0 ? agg.present / totalJours : 0;
     const heuresMoyennesJourPresent =
-      agg.present > 0 ? Math.round((agg.heuresTotales / agg.present) * 100) / 100 : null;
+      agg.present > 0
+        ? Math.round((agg.heuresTotales / agg.present) * 100) / 100
+        : null;
     const scoreRendement = computeScore({
       joursPresent: agg.present,
       joursAbsent: agg.absent,

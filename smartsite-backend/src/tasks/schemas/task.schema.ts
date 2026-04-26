@@ -109,37 +109,42 @@ TaskSchema.pre('findOneAndDelete', async function cleanupTaskDependencies() {
   ).exec();
 });
 
-TaskSchema.methods.getBlockedTasks = async function getBlockedTasks(): Promise<Types.ObjectId[]> {
+TaskSchema.methods.getBlockedTasks = async function getBlockedTasks(): Promise<
+  Types.ObjectId[]
+> {
   // `this` est le document Task courant
   const selfId = this._id as Types.ObjectId;
 
   // On récupère toutes les tâches qui référencent cette tâche dans leur tableau `dependsOn`.
   const TaskModel = this.model('Task') as Model<TaskDocument>;
-  const blocked = await TaskModel.find({ dependsOn: selfId }).select('_id').exec();
-
-  return blocked.map((t) => t._id as Types.ObjectId);
-};
-
-TaskSchema.methods.canMarkAsDone = async function canMarkAsDone(): Promise<boolean> {
-  // Aucune dépendance → la tâche peut être terminée.
-  if (!Array.isArray(this.dependsOn) || this.dependsOn.length === 0) {
-    return true;
-  }
-
-  const TaskModel = this.model('Task') as Model<TaskDocument>;
-
-  // On charge toutes les tâches dont dépend celle‑ci.
-  const dependencies = await TaskModel.find({ _id: { $in: this.dependsOn } })
-    .select('status')
+  const blocked = await TaskModel.find({ dependsOn: selfId })
+    .select('_id')
     .exec();
 
-  // Si pour une raison quelconque aucune dépendance valide n'est trouvée,
-  // on considère par sécurité que la tâche ne peut PAS être clôturée.
-  if (dependencies.length === 0) {
-    return false;
-  }
-
-  // La tâche est marquable comme terminée seulement si toutes les dépendances
-  // ont le statut strictement "Terminé".
-  return dependencies.every((task) => task.status === 'Terminé');
+  return blocked.map((t) => t._id);
 };
+
+TaskSchema.methods.canMarkAsDone =
+  async function canMarkAsDone(): Promise<boolean> {
+    // Aucune dépendance → la tâche peut être terminée.
+    if (!Array.isArray(this.dependsOn) || this.dependsOn.length === 0) {
+      return true;
+    }
+
+    const TaskModel = this.model('Task') as Model<TaskDocument>;
+
+    // On charge toutes les tâches dont dépend celle‑ci.
+    const dependencies = await TaskModel.find({ _id: { $in: this.dependsOn } })
+      .select('status')
+      .exec();
+
+    // Si pour une raison quelconque aucune dépendance valide n'est trouvée,
+    // on considère par sécurité que la tâche ne peut PAS être clôturée.
+    if (dependencies.length === 0) {
+      return false;
+    }
+
+    // La tâche est marquable comme terminée seulement si toutes les dépendances
+    // ont le statut strictement "Terminé".
+    return dependencies.every((task) => task.status === 'Terminé');
+  };

@@ -26,7 +26,9 @@ function field(body: Record<string, unknown>, key: string): string {
   return String(v);
 }
 
-function validationMessage(errs: import('class-validator').ValidationError[]): string {
+function validationMessage(
+  errs: import('class-validator').ValidationError[],
+): string {
   return errs
     .flatMap((e) => (e.constraints ? Object.values(e.constraints) : []))
     .join(' · ');
@@ -41,10 +43,15 @@ export class HumanResourcesController {
     const availability =
       availabilityRaw === ''
         ? true
-        : availabilityRaw === 'true' || availabilityRaw === '1' || availabilityRaw === 'on';
+        : availabilityRaw === 'true' ||
+          availabilityRaw === '1' ||
+          availabilityRaw === 'on';
     const cvUrl = field(body, 'cvUrl').trim();
     const imageUrl = field(body, 'imageUrl').trim();
-    const salaryRaw = field(body, 'monthlySalaryDt').trim().replace(/\s/g, '').replace(',', '.');
+    const salaryRaw = field(body, 'monthlySalaryDt')
+      .trim()
+      .replace(/\s/g, '')
+      .replace(',', '.');
     let monthlySalaryDt = 0;
     if (salaryRaw !== '') {
       const n = Number(salaryRaw);
@@ -81,7 +88,8 @@ export class HumanResourcesController {
   ) {
     const dto = this.buildCreateDto(body);
     if (files?.cv?.[0]) dto.cvUrl = `/uploads/humans/${files.cv[0].filename}`;
-    if (files?.image?.[0]) dto.imageUrl = `/uploads/humans/${files.image[0].filename}`;
+    if (files?.image?.[0])
+      dto.imageUrl = `/uploads/humans/${files.image[0].filename}`;
 
     const instance = plainToInstance(CreateHumanDto, dto);
     const errors = await validate(instance);
@@ -119,7 +127,8 @@ export class HumanResourcesController {
   ) {
     const dto = this.buildCreateDto(body) as UpdateHumanDto;
     if (files?.cv?.[0]) dto.cvUrl = `/uploads/humans/${files.cv[0].filename}`;
-    if (files?.image?.[0]) dto.imageUrl = `/uploads/humans/${files.image[0].filename}`;
+    if (files?.image?.[0])
+      dto.imageUrl = `/uploads/humans/${files.image[0].filename}`;
 
     const instance = plainToInstance(UpdateHumanDto, dto);
     const errors = await validate(instance, { skipMissingProperties: true });

@@ -6,6 +6,14 @@ import { CheckIcon, ChevronRightIcon, CircleIcon } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
+import {
+  classNameRadixSubContent8,
+  SLATE_RADIX_CHECKBOX_ITEM,
+  SLATE_RADIX_ITEM_WITH_VARIANTS,
+  SLATE_RADIX_RADIO_ITEM,
+  SLATE_RADIX_SUB_TRIGGER,
+} from './slate-radix-menu-classes'
+
 function DropdownMenu({
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
@@ -73,10 +81,7 @@ function DropdownMenuItem({
       data-slot="dropdown-menu-item"
       data-inset={inset}
       data-variant={variant}
-      className={cn(
-        "relative flex cursor-default select-none items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-200 outline-hidden focus:bg-white/[0.08] focus:text-slate-50 data-[variant=destructive]:text-red-400 data-[variant=destructive]:focus:bg-red-500/15 data-[variant=destructive]:focus:text-red-300 data-[variant=destructive]:*:[svg]:!text-red-400 [&_svg:not([class*='text-'])]:text-slate-400 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[inset]:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        className,
-      )}
+      className={cn(SLATE_RADIX_ITEM_WITH_VARIANTS, className)}
       {...props}
     />
   )
@@ -91,10 +96,7 @@ function DropdownMenuCheckboxItem({
   return (
     <DropdownMenuPrimitive.CheckboxItem
       data-slot="dropdown-menu-checkbox-item"
-      className={cn(
-        "relative flex cursor-default select-none items-center gap-2 rounded-lg py-1.5 pr-2 pl-8 text-sm text-slate-200 outline-hidden focus:bg-white/[0.08] focus:text-slate-50 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        className,
-      )}
+      className={cn(SLATE_RADIX_CHECKBOX_ITEM, className)}
       checked={checked}
       {...props}
     >
@@ -127,10 +129,7 @@ function DropdownMenuRadioItem({
   return (
     <DropdownMenuPrimitive.RadioItem
       data-slot="dropdown-menu-radio-item"
-      className={cn(
-        "relative flex cursor-default select-none items-center gap-2 rounded-lg py-1.5 pr-2 pl-8 text-sm text-slate-200 outline-hidden focus:bg-white/[0.08] focus:text-slate-50 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        className,
-      )}
+      className={cn(SLATE_RADIX_RADIO_ITEM, className)}
       {...props}
     >
       <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
@@ -210,10 +209,7 @@ function DropdownMenuSubTrigger({
     <DropdownMenuPrimitive.SubTrigger
       data-slot="dropdown-menu-sub-trigger"
       data-inset={inset}
-      className={cn(
-        "flex cursor-default select-none items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-200 outline-hidden focus:bg-white/[0.08] focus:text-slate-50 data-[state=open]:bg-white/[0.08] data-[state=open]:text-slate-50 [&_svg:not([class*='text-'])]:text-slate-400 data-[inset]:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        className,
-      )}
+      className={cn(SLATE_RADIX_SUB_TRIGGER, className)}
       {...props}
     >
       {children}
@@ -229,10 +225,7 @@ function DropdownMenuSubContent({
   return (
     <DropdownMenuPrimitive.SubContent
       data-slot="dropdown-menu-sub-content"
-      className={cn(
-        'z-50 min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-xl border border-white/10 bg-popover/95 p-1 text-popover-foreground shadow-xl shadow-black/40 backdrop-blur-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
-        className,
-      )}
+      className={cn(classNameRadixSubContent8('dropdown'), className)}
       {...props}
     />
   )
