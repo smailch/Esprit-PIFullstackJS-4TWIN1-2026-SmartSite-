@@ -2,9 +2,9 @@
  * PiSmartSite — CI monorepo (1 job) : Backend NestJS + Frontend Next.js + smartsite-ai-service (Python)
  *
  * Jenkins : Pipeline from SCM → Script Path = Jenkinsfile (racine du dépôt)
- * Prérequis : agent Linux avec Node.js 20+ et npm sur le PATH, Git, plugins Git + Pipeline.
- * (Option : plugin « NodeJS » + outil « nodejs-22 » — alors tu peux rajouter tools { nodejs 'nodejs-22' }.)
- * Python 3 sur l’agent (python3) pour smartsite-ai-service.
+ * Prérequis : agent Linux (curl, tar, gzip), Git, plugin Pipeline. Node est auto-installé dans
+ * le workspace (.ci-tools/node) si absent — adapté aux conteneurs jenkins/jenkins sans Node.
+ * Python 3 (python3) sur l’agent pour smartsite-ai-service.
  *
  * Le service IA : installation légère (FastAPI + Uvicorn + multipart) + compileall + import de main.
  * Torch / Ultralytics ne sont pas installés en CI (trop lourds) ; le code reste validé syntaxiquement.
@@ -31,15 +31,50 @@ pipeline {
       }
     }
 
+    stage('Bootstrap Node') {
+      steps {
+        sh '''
+          set -e
+          if command -v node >/dev/null 2>&1; then
+            echo ">>> Node déjà sur le PATH: $(command -v node) ($(node -v))"
+            exit 0
+          fi
+          NODE_VER=22.12.0
+          ARCH=x64
+          case "$(uname -m)" in
+            aarch64|arm64) ARCH=arm64 ;;
+          esac
+          DEST="${WORKSPACE}/.ci-tools/node"
+          mkdir -p "${WORKSPACE}/.ci-tools"
+          if [ -x "${DEST}/bin/node" ]; then
+            echo ">>> Réutilisation Node ${NODE_VER} dans le workspace"
+            exit 0
+          fi
+          echo ">>> Téléchargement Node ${NODE_VER} (linux-${ARCH}, pas de droits root)"
+          TMP="/tmp/node-ci-$$.tar.gz"
+          curl -fsSL "https://nodejs.org/dist/v${NODE_VER}/node-v${NODE_VER}-linux-${ARCH}.tar.gz" -o "${TMP}"
+          rm -rf "${DEST}"
+          mkdir -p "${DEST}"
+          tar -xzf "${TMP}" -C "${DEST}" --strip-components=1
+          rm -f "${TMP}"
+        '''
+        script {
+          if (fileExists('.ci-tools/node/bin/node')) {
+            env.PATH = "${env.WORKSPACE}/.ci-tools/node/bin:${env.PATH}"
+          }
+        }
+      }
+    }
+
     stage('Toolchain') {
       steps {
         sh '''
           set -e
-          echo ">>> Node / npm (requis sur l’agent si le plugin NodeJS n’est pas installé)"
+          echo ">>> Node / npm"
           node -v
           npm -v
           echo ">>> Python (service IA)"
-          command -v python3 >/dev/null 2>&1 && python3 --version || { echo "python3 manquant"; exit 1; }
+          command -v python3 >/dev/null 2>&1 && python3 --version || { echo "python3 manquant sur l’agent"; exit 1; }
         '''
       }
     }

@@ -53,7 +53,7 @@ Télécharger la [LTS Jenkins](https://www.jenkins.io/download/) et suivre l’a
    - **Git**  
    - **Pipeline**  
 
-   Les `Jenkinsfile` du dépôt **n’exigent plus** le plugin **NodeJS** : ils utilisent `node` et `npm` déjà présents sur le **PATH** de l’agent (idéalement **Node 22.x**). Tu peux quand même installer le plugin NodeJS et déclarer un outil nommé `nodejs-22` si tu préfères gérer Node depuis Jenkins.
+   Les `Jenkinsfile` du dépôt **n’exigent pas** le plugin **NodeJS** : si `node` est absent sur l’agent (ex. image `jenkins/jenkins`), le stage **Bootstrap Node** télécharge **Node 22 LTS** dans le workspace (`.ci-tools/node`) et met à jour le `PATH`. Sinon, le Node déjà installé est utilisé.
 
    (Optionnel : **Blue Ocean** pour une UI de pipelines.)
 
