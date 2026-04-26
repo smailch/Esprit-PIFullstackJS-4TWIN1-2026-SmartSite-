@@ -2,9 +2,8 @@
  * PiSmartSite — CI monorepo (1 job) : Backend NestJS + Frontend Next.js + smartsite-ai-service (Python)
  *
  * Jenkins : Pipeline from SCM → Script Path = Jenkinsfile (racine du dépôt)
- * Prérequis : agent Linux (curl, tar, gzip), Git, plugin Pipeline. Node est auto-installé dans
- * le workspace (.ci-tools/node) si absent — adapté aux conteneurs jenkins/jenkins sans Node.
- * Python 3 (python3) sur l’agent pour smartsite-ai-service.
+ * Prérequis : agent Linux (curl, tar, gzip), Git, plugin Pipeline.
+ * Node et Python 3 sont auto-installés dans le workspace (.ci-tools/) si absents (images jenkins/jenkins).
  *
  * Le service IA : installation légère (FastAPI + Uvicorn + multipart) + compileall + import de main.
  * Torch / Ultralytics ne sont pas installés en CI (trop lourds) ; le code reste validé syntaxiquement.
@@ -61,6 +60,48 @@ pipeline {
         script {
           if (fileExists('.ci-tools/node/bin/node')) {
             env.PATH = "${env.WORKSPACE}/.ci-tools/node/bin:${env.PATH}"
+          }
+        }
+      }
+    }
+
+    stage('Bootstrap Python') {
+      steps {
+        sh '''
+          set -e
+          if command -v python3 >/dev/null 2>&1; then
+            echo ">>> Python déjà sur le PATH: $(command -v python3) ($(python3 --version))"
+            exit 0
+          fi
+          PY_ROOT="${WORKSPACE}/.ci-tools/python"
+          if [ -x "${PY_ROOT}/bin/python3" ] || [ -x "${PY_ROOT}/bin/python3.11" ]; then
+            echo ">>> Réutilisation Python dans le workspace"
+            exit 0
+          fi
+          REL=20260414
+          VER=3.11.15
+          TRIP=x86_64-unknown-linux-gnu
+          case "$(uname -m)" in
+            aarch64|arm64) TRIP=aarch64-unknown-linux-gnu ;;
+          esac
+          NAME="cpython-${VER}+${REL}-${TRIP}-install_only.tar.gz"
+          URL="https://github.com/astral-sh/python-build-standalone/releases/download/${REL}/${NAME}"
+          echo ">>> Téléchargement Python ${VER} (${TRIP}, build autonome Astral)"
+          TMP="/tmp/py-ci-$$.tar.gz"
+          curl -fsSL "${URL}" -o "${TMP}"
+          mkdir -p "${WORKSPACE}/.ci-tools"
+          rm -rf "${PY_ROOT}"
+          tar -xzf "${TMP}" -C "${WORKSPACE}/.ci-tools"
+          rm -f "${TMP}"
+          if [ ! -x "${PY_ROOT}/bin/python3" ] && [ -x "${PY_ROOT}/bin/python3.11" ]; then
+            ln -sf python3.11 "${PY_ROOT}/bin/python3"
+          fi
+          "${PY_ROOT}/bin/python3" --version
+        '''
+        script {
+          def pyBin = "${env.WORKSPACE}/.ci-tools/python/bin"
+          if (fileExists('.ci-tools/python/bin/python3') || fileExists('.ci-tools/python/bin/python3.11')) {
+            env.PATH = "${pyBin}:${env.PATH}"
           }
         }
       }
