@@ -1,0 +1,76 @@
+/**
+ * PiSmartSite — CI Backend (NestJS)
+ * Job Jenkins : charger ce fichier via « Pipeline script from SCM », Script Path = smartsite-backend/Jenkinsfile
+ * Prérequis : NodeJS nommé « nodejs-22 » (Global Tool Configuration) + agent Linux avec Git.
+ */
+pipeline {
+  agent any
+
+  options {
+    timestamps()
+    buildDiscarder(logRotator(numToKeepStr: '20'))
+  }
+
+  tools {
+    nodejs 'nodejs-22'
+  }
+
+  environment {
+    CI = 'true'
+    HUSKY = '0'
+    // Aligné sur .github/workflows/backend-ci.yml
+    JEST_JUNIT_OUTPUT_DIR = "${WORKSPACE}/reports/junit"
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Install') {
+      steps {
+        dir('smartsite-backend') {
+          sh 'echo ">>> npm ci (backend)" && npm ci'
+        }
+      }
+    }
+
+    stage('Unit tests + coverage') {
+      steps {
+        sh 'mkdir -p reports/junit'
+        dir('smartsite-backend') {
+          sh 'echo ">>> npm run test:cov:ci (échec = pipeline rouge)" && npm run test:cov:ci'
+        }
+      }
+      post {
+        always {
+          junit testResults: 'reports/junit/**/*.xml', allowEmptyResults: true
+        }
+      }
+    }
+
+    stage('Build') {
+      steps {
+        dir('smartsite-backend') {
+          sh 'echo ">>> npm run build" && npm run build'
+        }
+      }
+    }
+  }
+
+  post {
+    success {
+      echo 'CI Backend : SUCCESS — prêt pour enchaînement CD (job déclenché après ce projet).'
+    }
+    failure {
+      echo 'CI Backend : FAILURE — corriger les tests ou le build avant tout déploiement.'
+    }
+    always {
+      dir('smartsite-backend') {
+        archiveArtifacts artifacts: 'coverage/**/*', allowEmptyArchive: true
+      }
+    }
+  }
+}

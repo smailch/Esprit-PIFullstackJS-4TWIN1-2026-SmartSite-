@@ -6,7 +6,8 @@
     "postinstall": "echo Racine OK — utiliser smarsite-frontend et smartsite-backend pour dev.",
     "test:cov:all": "npm run test:cov:ci --prefix smartsite-backend && npm run test:cov:ci --prefix smarsite-frontend",
     "sonar:prep:lcov": "node scripts/sonar-prep-lcov.mjs",
-    "sonar:prep": "npm run test:cov:all && npm run sonar:prep:lcov"
+    "sonar:prep": "npm run test:cov:all && npm run sonar:prep:lcov",
+    "sonar:scan": "node scripts/sonar-scan.mjs"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.9",

@@ -3,7 +3,7 @@
  * (Jest: SF:src\… → smartsite-backend\… ; Vitest: chemins relatifs au front → smarsite-frontend\…).
  * Sans ce préfixe, SonarQube ne peut pas rattacher la couverture aux fichiers indexés.
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, normalize, sep, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -39,6 +39,8 @@ function transformFrontend(s) {
   return out.join("\n");
 }
 
+const mergedParts = [];
+
 for (const [path, fn, label] of [
   [backendLcov, transformBackend, "backend"],
   [frontendLcov, transformFrontend, "frontend"],
@@ -49,10 +51,20 @@ for (const [path, fn, label] of [
   } catch {
     continue;
   }
-  writeFileSync(path, fn(content), "utf8");
+  const updated = fn(content);
+  writeFileSync(path, updated, "utf8");
+  mergedParts.push(updated);
   console.log(
     "sonar-prep-lcov: mis à jour",
     relative(root, path),
     `(${label})`,
   );
+}
+
+if (mergedParts.length > 0) {
+  const outDir = join(root, "coverage");
+  const outFile = join(outDir, "lcov.info");
+  mkdirSync(outDir, { recursive: true });
+  writeFileSync(outFile, mergedParts.join("\n"), "utf8");
+  console.log("sonar-prep-lcov: fusion racine", relative(root, outFile));
 }

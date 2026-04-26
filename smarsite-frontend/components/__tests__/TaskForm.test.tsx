@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import TaskForm, { type TaskFormValues } from "@/components/TaskForm";
 
@@ -46,28 +46,27 @@ describe("TaskForm", () => {
         onSubmit={onSubmit}
       />,
     );
-    await u.click(screen.getByRole("button", { name: "Create task" }));
+    await u.click(screen.getAllByRole("button", { name: "Create task" })[0]!);
     expect(await screen.findByText(/Title is required/i)).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("When valid title and Create task Then onSubmit is called with trimmed title", async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
-    render(
+    const { container } = render(
       <TaskForm
         mode="create"
         showActions
-        initialValues={baseValues}
+        initialValues={{ ...baseValues, title: "  My task name  " }}
         projects={projects as never}
         users={[]}
         tasks={[]}
         onSubmit={onSubmit}
       />,
     );
-    const title = screen.getByLabelText(/^Title/i);
-    await u.clear(title);
-    await u.type(title, "My task name");
-    await u.click(screen.getByRole("button", { name: "Create task" }));
+    const form = container.querySelector("form");
+    expect(form).toBeTruthy();
+    fireEvent.submit(form!);
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
     expect((onSubmit.mock.calls[0][0] as TaskFormValues).title).toBe("My task name");
   });

@@ -12,12 +12,14 @@ pnpm-lock.yaml          # non utilisé si équipe npm
 # ==================== NestJS / Backend ====================
 dist/
 coverage/
+junit.xml
 
 # ==================== Python & IA ====================
 __pycache__/
 *.py[cod]
 *.pyc
 .venv/
+.venv-ci/
 venv/
 env/
 ENV/

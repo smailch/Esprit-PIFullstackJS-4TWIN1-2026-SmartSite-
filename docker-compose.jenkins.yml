@@ -1,0 +1,22 @@
+# Jenkins LTS pour PiSmartSite (optionnel)
+# Démarrage : docker compose -f docker-compose.jenkins.yml up -d
+# UI : http://localhost:8080 — mot de passe admin dans les logs du conteneur au premier démarrage.
+#
+# Plugins à installer depuis « Manage Jenkins → Plugins » :
+#   Git, Pipeline, NodeJS Plugin (et éventuellement Blue Ocean).
+#
+# Node.js : Manage Jenkins → Tools → NodeJS installations → Name : nodejs-22 → Version 22.x
+
+services:
+  jenkins:
+    image: jenkins/jenkins:lts-jdk21
+    container_name: pismartsite-jenkins
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+    restart: unless-stopped
+
+volumes:
+  jenkins_home:

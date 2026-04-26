@@ -1,70 +1,101 @@
-// PiSmartSite — pipeline type (declarative). Ajustez les labels d’agents et les chemins si besoin.
+/**
+ * PiSmartSite — CI monorepo (1 job) : Backend NestJS + Frontend Next.js + smartsite-ai-service (Python)
+ *
+ * Jenkins : Pipeline from SCM → Script Path = Jenkinsfile (racine du dépôt)
+ * Prérequis : agent Linux, Git, plugins Git + Pipeline + NodeJS ; outil Node nommé « nodejs-22 »
+ * Python 3 doit être disponible sur l’agent (python3) pour le service IA.
+ *
+ * Le service IA : installation légère (FastAPI + Uvicorn + multipart) + compileall + import de main.
+ * Torch / Ultralytics ne sont pas installés en CI (trop lourds) ; le code reste validé syntaxiquement.
+ */
 pipeline {
   agent any
 
   options {
     timestamps()
-    ansiColor('xterm')
+    buildDiscarder(logRotator(numToKeepStr: '20'))
+  }
+
+  tools {
+    nodejs 'nodejs-22'
+  }
+
+  environment {
+    CI = 'true'
+    HUSKY = '0'
+    NEXT_TELEMETRY_DISABLED = '1'
+    NEXT_PUBLIC_API_URL = "${env.NEXT_PUBLIC_API_URL ?: 'http://127.0.0.1:3200'}"
   }
 
   stages {
-    stage('Install') {
+    stage('Checkout') {
       steps {
-        dir('smartsite-backend') {
-          sh 'npm ci || npm install'
-        }
-        dir('smarsite-frontend') {
-          sh 'npm ci || npm install'
-        }
+        checkout scm
       }
     }
 
-    stage('Test backend') {
-      steps {
-        dir('smartsite-backend') {
-          sh 'mkdir -p ../reports/junit'
-          sh 'npm run test:ci'
+    stage('CI — Backend, Frontend, AI service') {
+      parallel {
+        stage('Backend (NestJS)') {
+          environment {
+            JEST_JUNIT_OUTPUT_DIR = "${WORKSPACE}/reports/junit/backend"
+          }
+          steps {
+            sh 'mkdir -p reports/junit/backend'
+            dir('smartsite-backend') {
+              sh 'echo ">>> Backend: npm ci" && npm ci'
+              sh 'echo ">>> Backend: tests + coverage (échec = pipeline rouge)" && npm run test:cov:ci'
+              sh 'echo ">>> Backend: build" && npm run build'
+            }
+          }
         }
-      }
-    }
 
-    stage('Test frontend') {
-      steps {
-        dir('smarsite-frontend') {
-          sh 'mkdir -p ../reports/junit'
-          sh 'npm run test:ci'
+        stage('Frontend (Next.js)') {
+          steps {
+            sh 'mkdir -p reports/junit'
+            dir('smarsite-frontend') {
+              sh 'echo ">>> Frontend: npm ci" && npm ci'
+              sh 'echo ">>> Frontend: tests + coverage (échec = pipeline rouge)" && npm run test:cov:ci'
+              sh 'echo ">>> Frontend: build" && npm run build'
+            }
+          }
         }
-      }
-    }
 
-    stage('Coverage backend') {
-      steps {
-        dir('smartsite-backend') {
-          sh 'mkdir -p ../reports/junit'
-          sh 'npm run test:cov:ci'
+        stage('AI service (Python / FastAPI)') {
+          steps {
+            dir('smartsite-ai-service') {
+              sh '''
+                set -e
+                if command -v python3 >/dev/null 2>&1; then PY=python3
+                elif command -v python >/dev/null 2>&1; then PY=python
+                else echo "Python 3 requis sur l’agent Jenkins pour smartsite-ai-service"; exit 1
+                fi
+                echo ">>> AI service: venv + dépendances minimales (sans torch — CI rapide)"
+                $PY -m venv .venv-ci
+                . .venv-ci/bin/activate
+                pip install --upgrade pip -q
+                pip install -q fastapi==0.104.1 "uvicorn[standard]==0.24.0" python-multipart==0.0.6
+                $PY -m compileall -q .
+                $PY -c "import main; assert main.app.title == 'SmartSite AI'"
+                echo ">>> AI service: OK"
+              '''
+            }
+          }
         }
-      }
-    }
-
-    stage('Coverage frontend') {
-      steps {
-        dir('smarsite-frontend') {
-          sh 'mkdir -p ../reports/junit'
-          sh 'npm run test:cov:ci'
-        }
-      }
-    }
-
-    stage('Archive artifacts') {
-      steps {
-        archiveArtifacts artifacts: 'reports/junit/*.xml, smartsite-backend/coverage/**, smarsite-frontend/coverage/**', allowEmptyArchive: true
       }
     }
   }
 
   post {
     always {
-      junit 'reports/junit/*.xml'
+      junit testResults: 'reports/junit/**/*.xml', allowEmptyResults: true
+      archiveArtifacts artifacts: 'smartsite-backend/coverage/**/*,smarsite-frontend/coverage/**/*', allowEmptyArchive: true
+    }
+    success {
+      echo 'CI monorepo PiSmartSite : SUCCESS (backend + frontend + smartsite-ai-service).'
+    }
+    failure {
+      echo 'CI monorepo : FAILURE — corriger le stage indiqué en erreur.'
     }
   }
 }

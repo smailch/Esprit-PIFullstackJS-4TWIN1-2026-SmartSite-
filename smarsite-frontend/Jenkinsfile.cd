@@ -1,0 +1,41 @@
+/**
+ * PiSmartSite — CD Frontend (Netlify / Vercel / hook HTTP)
+ * Déclenchement : « Build after other projects are built » — job CI Frontend — only if stable.
+ */
+pipeline {
+  agent any
+
+  options {
+    timestamps()
+  }
+
+  stages {
+    stage('Deploy') {
+      steps {
+        script {
+          def hook = env.FRONTEND_DEPLOY_HOOK_URL?.trim()
+          if (!hook) {
+            echo '[CD Frontend] FRONTEND_DEPLOY_HOOK_URL non défini — déploiement simulé (succès).'
+            echo 'Configurez l’URL du hook Vercel / Netlify dans les paramètres du job.'
+          } else {
+            sh """
+              set -e
+              echo ">>> POST deploy hook (frontend)"
+              curl -fsS -X POST --retry 2 --retry-delay 5 -H "Accept: application/json" "${hook}"
+              echo "OK — hook appelé."
+            """
+          }
+        }
+      }
+    }
+  }
+
+  post {
+    success {
+      echo 'CD Frontend : terminé.'
+    }
+    failure {
+      echo 'CD Frontend : échec (réseau ou hook refusé).'
+    }
+  }
+}

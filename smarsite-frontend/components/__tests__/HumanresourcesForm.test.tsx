@@ -26,7 +26,9 @@ describe("HumanForm (HumanresourcesForm)", () => {
 
   it("Given empty required fields When submit Then shows validation and does not call createHuman", async () => {
     render(<HumanForm mode="create" />);
-    await u.click(screen.getByRole("button", { name: /Create Person/i }));
+    await u.click(
+      screen.getAllByRole("button", { name: /Create Person/i })[0]!,
+    );
     expect(await screen.findByText(/Prénom obligatoire/i)).toBeInTheDocument();
     expect(api.createHuman).not.toHaveBeenCalled();
   });
@@ -41,7 +43,9 @@ describe("HumanForm (HumanresourcesForm)", () => {
     await u.type(screen.getByLabelText(/Role/i), "Ouvrier");
     await u.type(document.querySelector('input[name="birthDate"]')!, "1990-05-20");
 
-    await u.click(screen.getByRole("button", { name: /Create Person/i }));
+    await u.click(
+      screen.getAllByRole("button", { name: /Create Person/i })[0]!,
+    );
 
     await waitFor(() => expect(api.createHuman).toHaveBeenCalledTimes(1));
     const fd = (api.createHuman as ReturnType<typeof vi.fn>).mock.calls[0][0] as FormData;

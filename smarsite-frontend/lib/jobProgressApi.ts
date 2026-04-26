@@ -1,5 +1,6 @@
-import axios, { type AxiosError } from "axios";
+import axios from "axios";
 import { getApiBaseUrl, getApiRootAbsoluteUrl } from "./api";
+import { formatAxiosError } from "./formatAxiosError";
 
 const client = axios.create({
   baseURL: getApiBaseUrl(),
@@ -52,18 +53,6 @@ function normalizeAiAnalysis(raw: Partial<AiAnalysisPayload> | undefined): AiAna
     },
     message: typeof raw?.message === "string" ? raw.message : "",
   };
-}
-
-function formatAxiosError(err: unknown): string {
-  const ax = err as AxiosError<{ message?: string | string[] }>;
-  const data = ax.response?.data;
-  if (data && typeof data === "object" && "message" in data) {
-    const m = data.message;
-    if (Array.isArray(m)) return m.filter(Boolean).join(" · ");
-    if (typeof m === "string" && m.length) return m;
-  }
-  if (ax.message) return ax.message;
-  return "Request failed";
 }
 
 export async function fetchJobProgress(jobId: string): Promise<JobProgressResponse> {

@@ -1,0 +1,44 @@
+/**
+ * PiSmartSite — CD Backend
+ * Déclenchement : configurer le job pour « Build after other projects are built »
+ *   Projects : nom exact du job CI Backend — Trigger : only if stable.
+ * Secret : ajouter BACKEND_DEPLOY_HOOK_URL comme « Secret text » (Credentials) et lier au job,
+ *   ou variable d’environnement au niveau du job.
+ */
+pipeline {
+  agent any
+
+  options {
+    timestamps()
+  }
+
+  stages {
+    stage('Deploy') {
+      steps {
+        script {
+          def hook = env.BACKEND_DEPLOY_HOOK_URL?.trim()
+          if (!hook) {
+            echo '[CD Backend] BACKEND_DEPLOY_HOOK_URL non défini — déploiement simulé (succès).'
+            echo 'Configurez l’URL du hook Render / Railway / autre dans les paramètres du job.'
+          } else {
+            sh """
+              set -e
+              echo ">>> POST deploy hook (backend)"
+              curl -fsS -X POST --retry 2 --retry-delay 5 -H "Accept: application/json" "${hook}"
+              echo "OK — hook appelé."
+            """
+          }
+        }
+      }
+    }
+  }
+
+  post {
+    success {
+      echo 'CD Backend : terminé.'
+    }
+    failure {
+      echo 'CD Backend : échec (réseau ou hook refusé).'
+    }
+  }
+}

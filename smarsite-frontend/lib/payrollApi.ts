@@ -1,23 +1,12 @@
-import axios, { type AxiosError } from "axios";
+import axios from "axios";
 import { getApiBaseUrl } from "./api";
+import { formatAxiosError } from "./formatAxiosError";
 
 function createClient() {
   return axios.create({
     baseURL: getApiBaseUrl(),
     headers: { "Content-Type": "application/json" },
   });
-}
-
-function formatAxiosError(err: unknown): string {
-  const ax = err as AxiosError<{ message?: string | string[] }>;
-  const data = ax.response?.data;
-  if (data && typeof data === "object" && "message" in data) {
-    const m = data.message;
-    if (Array.isArray(m)) return m.filter(Boolean).join(" · ");
-    if (typeof m === "string" && m.length) return m;
-  }
-  if (ax.message) return ax.message;
-  return "Request failed";
 }
 
 export type PayrollMonthlyRow = {

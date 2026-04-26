@@ -26,7 +26,9 @@ describe("EquipmentForm (EquipmentresourcesForm)", () => {
 
   it("Given empty fields When submit Then shows name error and does not call createEquipment", async () => {
     render(<EquipmentForm mode="create" />);
-    await u.click(screen.getByRole("button", { name: /Create Equipment/i }));
+    await u.click(
+      screen.getAllByRole("button", { name: /Create Equipment/i })[0]!,
+    );
     const errLines = await screen.findAllByText(/champ obligatoire/i);
     expect(
       errLines.some((e) => (e.textContent ?? "").includes("équipement")),
@@ -46,7 +48,9 @@ describe("EquipmentForm (EquipmentresourcesForm)", () => {
     await u.type(document.querySelector('input[name="purchaseDate"]')!, "2020-01-10");
     await u.type(document.querySelector('input[name="lastMaintenanceDate"]')!, "2024-06-01");
 
-    await u.click(screen.getByRole("button", { name: /Create Equipment/i }));
+    await u.click(
+      screen.getAllByRole("button", { name: /Create Equipment/i })[0]!,
+    );
 
     await waitFor(() => expect(api.createEquipment).toHaveBeenCalledTimes(1));
     const payload = (api.createEquipment as ReturnType<typeof vi.fn>).mock.calls[0][0];

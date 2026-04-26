@@ -46,7 +46,7 @@ describe("JobForm", () => {
 
   it("Given empty form When submit Then shows title error and does not call createJob", async () => {
     render(<JobForm mode="create" />);
-    await u.click(screen.getByRole("button", { name: /Create Job/i }));
+    await u.click(screen.getAllByRole("button", { name: /Create Job/i })[0]!);
     expect(await screen.findByText(/Le titre est obligatoire/i)).toBeInTheDocument();
     expect(api.createJob).not.toHaveBeenCalled();
   });
@@ -54,7 +54,10 @@ describe("JobForm", () => {
   it("Given valid fields When create Then createJob is called and navigates to /jobs", async () => {
     render(<JobForm mode="create" />);
 
-    await u.type(screen.getByPlaceholderText(/Enter job title/i), "Mon job");
+    await u.type(
+      screen.getAllByPlaceholderText(/Enter job title/i)[0]!,
+      "Mon job",
+    );
     const taskSelect = document.querySelector(
       'select[name="taskId"]',
     ) as HTMLSelectElement;
@@ -62,7 +65,7 @@ describe("JobForm", () => {
     await u.type(document.querySelector('input[name="startTime"]')!, "2026-06-15T08:00");
     await u.type(document.querySelector('input[name="endTime"]')!, "2026-06-15T12:00");
 
-    await u.click(screen.getByRole("button", { name: /Create Job/i }));
+    await u.click(screen.getAllByRole("button", { name: /Create Job/i })[0]!);
 
     await waitFor(() => expect(api.createJob).toHaveBeenCalledTimes(1));
     const payload = (api.createJob as ReturnType<typeof vi.fn>).mock.calls[0][0];

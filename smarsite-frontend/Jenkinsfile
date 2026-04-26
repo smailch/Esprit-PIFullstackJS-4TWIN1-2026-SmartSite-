@@ -1,0 +1,78 @@
+/**
+ * PiSmartSite — CI Frontend (Next.js)
+ * Job Jenkins : Script Path = smarsite-frontend/Jenkinsfile
+ * Prérequis : NodeJS « nodejs-22 » + agent Linux.
+ * Définir la variable de job NEXT_PUBLIC_API_URL (ou laisser le défaut ci-dessous).
+ */
+pipeline {
+  agent any
+
+  options {
+    timestamps()
+    buildDiscarder(logRotator(numToKeepStr: '20'))
+  }
+
+  tools {
+    nodejs 'nodejs-22'
+  }
+
+  environment {
+    CI = 'true'
+    HUSKY = '0'
+    NEXT_TELEMETRY_DISABLED = '1'
+    // Surchargeable dans la config du job Jenkins
+    NEXT_PUBLIC_API_URL = "${env.NEXT_PUBLIC_API_URL ?: 'http://127.0.0.1:3200'}"
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Install') {
+      steps {
+        dir('smarsite-frontend') {
+          sh 'echo ">>> npm ci (frontend)" && npm ci'
+        }
+      }
+    }
+
+    stage('Unit tests + coverage') {
+      steps {
+        sh 'mkdir -p reports/junit'
+        dir('smarsite-frontend') {
+          sh 'echo ">>> npm run test:cov:ci (échec = pipeline rouge)" && npm run test:cov:ci'
+        }
+      }
+      post {
+        always {
+          junit testResults: 'reports/junit/**/*.xml', allowEmptyResults: true
+        }
+      }
+    }
+
+    stage('Build') {
+      steps {
+        dir('smarsite-frontend') {
+          sh 'echo ">>> npm run build" && npm run build'
+        }
+      }
+    }
+  }
+
+  post {
+    success {
+      echo 'CI Frontend : SUCCESS — prêt pour enchaînement CD.'
+    }
+    failure {
+      echo 'CI Frontend : FAILURE — corriger les tests ou le build.'
+    }
+    always {
+      dir('smarsite-frontend') {
+        archiveArtifacts artifacts: 'coverage/**/*', allowEmptyArchive: true
+      }
+    }
+  }
+}

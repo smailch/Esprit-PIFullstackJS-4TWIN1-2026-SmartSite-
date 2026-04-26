@@ -1,4 +1,3 @@
-import { Transporter } from './../../node_modules/@types/nodemailer/index.d';
 import {
   BadRequestException,
   Injectable,
@@ -12,8 +11,6 @@ import { Role, RoleDocument } from '../roles/roles.schema';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import * as nodemailer from 'nodemailer';
-console.log('MAIL_USER =', process.env.MAIL_USER);
-console.log('MAIL_PASS =', process.env.MAIL_PASS);
 
 @Injectable()
 export class UsersService {
@@ -122,14 +119,22 @@ export class UsersService {
 
     await user.save();
 
+    const mailUser = process.env.MAIL_USER?.trim();
+    const mailPass = process.env.MAIL_PASS?.trim();
+    if (!mailUser || !mailPass) {
+      throw new BadRequestException(
+        'Configuration e-mail manquante (MAIL_USER / MAIL_PASS)',
+      );
+    }
+
     try {
       const transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 587,
+        host: process.env.SMTP_HOST ?? 'smtp.gmail.com',
+        port: Number(process.env.SMTP_PORT ?? 587),
         secure: false,
         auth: {
-          user: 'ahmedallaya@gmail.com',
-          pass: 'geoxxnbjwubxpmbu',
+          user: mailUser,
+          pass: mailPass,
         },
       });
 
@@ -200,20 +205,10 @@ export class UsersService {
     userId: string,
     descriptor: number[],
   ): Promise<void> {
-    console.log(
-      'saveFaceDescriptor userId:',
-      userId,
-      'descriptor length:',
-      descriptor?.length,
-    );
-    const result = await this.userModel.findByIdAndUpdate(
+    await this.userModel.findByIdAndUpdate(
       userId,
       { faceDescriptor: descriptor },
       { new: true },
-    );
-    console.log(
-      'Updated user faceDescriptor length:',
-      result?.faceDescriptor?.length,
     );
   }
 
