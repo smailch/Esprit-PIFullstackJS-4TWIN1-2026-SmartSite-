@@ -24,7 +24,7 @@ Dépôt monorepo : **Backend** NestJS (`smartsite-backend/`), **Frontend** Next.
    `FRONTEND_DEPLOY_HOOK_URL` = URL du hook frontend  
 
 5. **Vérifier le CD**  
-   Pousse un petit commit sur `main` (ou merge). Ordre : **CI vert** (Backend + Frontend concernés) → peu après, **Backend CD** / **Frontend CD** (uniquement si le CI partenaire a réussi, et branche `main` ou `master`). Vérifie sur ton hébergeur qu’un **nouveau déploiement** a été déclenché.
+   Pousse un commit sur `main` ou `master`. Chaque **Backend CI** / **Frontend CI** comporte un job **Deploy … (hook)** *après* le job de build, uniquement sur ces branches. Vérifie sur ton hébergeur qu’un **nouveau déploiement** a été déclenché. Sur `preprod_final` (ou autre), le job *Deploy* est **ignoré** : un seul « workflow run » par app, pas de 2e workflow CD.
 
 6. **(Option) Protéger `main`**  
    **Settings → Rules → Rulesets** (ou *Branch protection*) : exiger le passage des workflows **Backend CI** et **Frontend CI** avant merge.
@@ -32,14 +32,14 @@ Dépôt monorepo : **Backend** NestJS (`smartsite-backend/`), **Frontend** Next.
 7. **En cas d’échec**  
    Ouvre l’onglet **Actions** → workflow rouge → clique sur l’étape en erreur. Compare avec [la section *Vérification locale*](#vérification-locale) (mêmes commandes que dans le YAML).
 
-## Pipelines (4)
+## Pipelines (2 workflows, CD inclus)
 
 | Fichier | Rôle |
 |--------|------|
-| `.github/workflows/backend-ci.yml` | `npm ci` → `lint:ci` (signal, ne bloque pas) → `test:ci` → `build` |
-| `.github/workflows/frontend-ci.yml` | `npm ci` → `test:ci` → `build` (voir ci-dessous pour ESLint) |
-| `.github/workflows/backend-cd.yml` | Après **succès** de « Backend CI » sur `main` / `master` (push) |
-| `.github/workflows/frontend-cd.yml` | Après **succès** de « Frontend CI » sur `main` / `master` (push) |
+| `.github/workflows/backend-ci.yml` | Job *build* : `npm ci` → `lint:ci` (signal) → `test:ci` → `build` ; sur **main/master** (push), job *Deploy backend* (hook). |
+| `.github/workflows/frontend-ci.yml` | Job *build* : `npm ci` → `test:ci` → `build` ; sur **main/master** (push), job *Deploy frontend* (hook). |
+
+Plus de workflows **Backend CD** / **Frontend CD** séparés : cela évitait le double comptage (un run CI + un run *workflow_run*).
 
 Les **tests sont obligatoires** : toute commande de test en échec fait échouer le job (pipeline rouge).
 
@@ -48,14 +48,14 @@ Les **tests sont obligatoires** : toute commande de test en échec fait échouer
 - **Backend** : `npm run lint:ci` est exécuté dans le CI avec `continue-on-error: true` tant que le code a une dette ESLint importante. Les **tests** et le **build** restent bloquants. Pour exiger ESLint en dur sur `main`, retire `continue-on-error` sur l’étape « ESLint » dans `backend-ci.yml` une fois les violations corrigées.
 - **Frontend** : le script `lint` (`eslint .`) n’a pas `eslint` dans `package.json` et Next.js 16 ne fournit plus `next lint` dans le CLI utilisé ici. Ajoute `eslint`, `eslint-config-next` et un `eslint.config.*` si tu veux du lint en CI, ou un script `typecheck` basé sur `tsc` une fois les erreurs TypeScript corrigées.
 
-## Déclenchement des CD
+## Déploiement (jobs *Deploy*)
 
-- Les workflows **CD** utilisent `workflow_run` : ils ne s’exécutent **que** lorsque le workflow CI ciblé s’est **terminé avec succès** sur **`main` ou `master`** (filtre `branches` sur le déclencheur) — ainsi un push sur `preprod_final` ne crée **pas** de run CD inutile.
-- Le job vérifie aussi : événement **push** (pas de déploiement automatique sur les PR seules).
+- C’est le **2ᵉ job** du même fichier YAML que le CI, avec `needs: [build-and-test]`. Il ne s’exécute que sur **push** vers `main` ou `master` (les PR lancent seulement le build).
+- Sur **preprod_final** : le run apparaît avec le job *Deploy* **skipped** (gris), un seul compteur « workflow run ».
 
-### Pourquoi beaucoup de « workflow runs » d’un coup ?
+### Comptage sur GitHub
 
-Un même commit sur **`preprod_final` puis sur `main`** lance : 4 CI (2 branches × 2 apps) + 2 CD (Backend + Front, une fois le CI `main` vert). C’est cohérent. Après le correctif `branches: [main, master]` sur les CD, les déploiements ne se programment plus quand seul le CI `preprod_final` a réussi.
+Un push sur **`preprod_final` + le même sur `main`** = typiquement **4 workflow runs** (2 branches × 2 apps), pas 4 + 4 comme avec d’anciens *workflow* CD distincts. Les **16** que tu pouvais voir venaient surtout de l’ancien `workflow_run` (chaque fin de CI = nouveau workflow).
 
 ## Filtres `paths` (CI)
 
@@ -68,8 +68,8 @@ Un même commit sur **`preprod_final` puis sur `main`** lance : 4 CI (2 branches
 
 | Secret | Utilisé par | Description |
 |--------|-------------|-------------|
-| `BACKEND_DEPLOY_HOOK_URL` | Backend CD | URL de **Deploy Hook** (ex. [Render](https://render.com/docs/deploys#deploy-an-image), Railway, autre) |
-| `FRONTEND_DEPLOY_HOOK_URL` | Frontend CD | Hook **Vercel**, **Netlify**, [Firebase](https://firebase.google.com/docs/hosting/github-integration), etc. |
+| `BACKEND_DEPLOY_HOOK_URL` | Job *Deploy* du **Backend CI** | URL de **Deploy Hook** (ex. [Render](https://render.com/docs/deploys#deploy-an-image), Railway, autre) |
+| `FRONTEND_DEPLOY_HOOK_URL` | Job *Deploy* du **Frontend CI** | Hook **Vercel**, **Netlify**, [Firebase](https://firebase.google.com/docs/hosting/github-integration), etc. |
 
 - Si le secret est **absent**, le job CD **affiche un avertissement** et se termine sans erreur (tu peux configurer le hook plus tard). Pour un déploiement **obligatoire** en production, supprime le `exit 0` conditionnel ou ajoute un secret factice pour faire échouer le run tant que l’URL n’est pas posée (à adapter selon ta politique).
 
@@ -80,11 +80,11 @@ Un même commit sur **`preprod_final` puis sur `main`** lance : 4 CI (2 branches
 
 ## Branche par défaut
 
-Adapte les branches dans les 4 YAML si ton dépôt utilise un autre nom (ex. `develop` seulement pour l’intégration : déjà présent pour le **CI** ; le **CD** cible seulement `main` / `master`).
+Adapte les branches dans les 2 YAML si ton dépôt utilise un autre nom (ex. `develop` / `preprod_final` : **CI** ; le job *Deploy* reste sur `main` / `master` via la condition `if` dans le YAML).
 
 ## Fichier `environment` (optionnel)
 
-Tu peux réintroduire un bloc `environment: name: production` sur les jobs CD si tu veux des **règles de protection** (approbation, délais) dans GitHub Environments.
+Tu peux réintroduire un bloc `environment: name: production` sur les jobs *Deploy* si tu veux des **règles de protection** (approbation, délais) dans GitHub Environments.
 
 ## Vérification locale
 

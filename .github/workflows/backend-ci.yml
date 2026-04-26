@@ -83,3 +83,24 @@ jobs:
           name: backend-junit
           path: reports/junit
           if-no-files-found: ignore
+
+  # CD intégré : évite un 2e workflow (workflow_run) = plus de double comptage dans Actions
+  deploy:
+    name: Deploy backend (hook)
+    needs: [build-and-test]
+    if: success() && github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Contexte
+        run: |
+          echo "Déploiement après CI vert — branche: ${{ github.ref_name }} — SHA: ${{ github.sha }}"
+      - name: POST deploy hook
+        env:
+          DEPLOY_HOOK: ${{ secrets.BACKEND_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$DEPLOY_HOOK" ]; then
+            echo '::warning::BACKEND_DEPLOY_HOOK_URL manquant (voir docs/CI-CD-SETUP.md).'
+            exit 0
+          fi
+          curl -fsS -X POST --retry 2 --retry-delay 5 -H "Accept: application/json" "$DEPLOY_HOOK"
+          echo "OK — hook appelé."
