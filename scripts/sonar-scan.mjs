@@ -1,6 +1,12 @@
 /**
  * SonarQube / SonarCloud — scanner npm v4 (@sonar/scan / sonarqube-scanner).
  * Le CLI n’accepte plus les arguments -D… en ligne de commande : utiliser l’environnement.
+ *
+ * Jenkins dans Docker : l’URL « http://localhost:9000 » du serveur SonarQube pointe vers le
+ * conteneur Jenkins, pas l’hôte. Définir SONAR_HOST_URL_OVERRIDE sur le job, ex. :
+ *   http://host.docker.internal:9000   (Docker Desktop Windows/macOS)
+ *   http://172.17.0.1:9000               (Linux, gateway du bridge docker0)
+ *
  * @see https://docs.sonarsource.com/sonarqube-server/latest/analyzing-source-code/scanners/npm/introduction/
  */
 import { spawnSync } from "node:child_process";
@@ -15,14 +21,17 @@ if (!token) {
   process.exit(1);
 }
 
-const host =
-  process.env.SONAR_HOST_URL?.trim() ||
-  process.env.SONARQUBE_HOST?.trim();
+const override =
+  process.env.SONAR_HOST_URL_OVERRIDE?.trim() ||
+  process.env.SONARQUBE_URL_OVERRIDE?.trim();
+const fromEnv =
+  process.env.SONAR_HOST_URL?.trim() || process.env.SONARQUBE_HOST?.trim();
+const host = override || fromEnv;
 
-const childEnv = {
-  ...process.env,
-  SONAR_TOKEN: token,
-};
+const childEnv = { ...process.env };
+delete childEnv.SONARQUBE_SCANNER_PARAMS;
+delete childEnv.SONAR_LOGIN;
+childEnv.SONAR_TOKEN = token;
 if (host) {
   childEnv.SONAR_HOST_URL = host;
 }

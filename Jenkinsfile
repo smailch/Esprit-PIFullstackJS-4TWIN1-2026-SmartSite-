@@ -12,6 +12,10 @@
  * SonarQube (après les tests) : fusion LCOV → analyse via plugin Jenkins → Quality Gate bloquant.
  * Jenkins : installer « SonarQube Scanner » ; Administration → SonarQube → serveur nommé exactement « SonarQube »
  * (ou adapter withSonarQubeEnv ci-dessous) ; webhook Sonar → Jenkins pour waitForQualityGate. Voir docs/JENKINS-CI-CD.md.
+ *
+ * SonarQube + Jenkins en Docker : l’URL du serveur ne doit pas être http://localhost:9000 côté agent.
+ * Sur le job, définir SONAR_HOST_URL_OVERRIDE (ex. http://host.docker.internal:9000) ou mettre la même URL
+ * dans Manage Jenkins → System → SonarQube servers (joignable depuis le conteneur).
  */
 pipeline {
   agent any
@@ -26,6 +30,7 @@ pipeline {
     HUSKY = '0'
     NEXT_TELEMETRY_DISABLED = '1'
     NEXT_PUBLIC_API_URL = "${env.NEXT_PUBLIC_API_URL ?: 'http://127.0.0.1:3200'}"
+    SONAR_HOST_URL_OVERRIDE = "${env.SONAR_HOST_URL_OVERRIDE ?: ''}"
   }
 
   stages {

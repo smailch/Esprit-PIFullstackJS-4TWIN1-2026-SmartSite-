@@ -153,7 +153,11 @@ Le monorepo inclut **`sonar-project.properties`** (clé **`PiSmartSite`**, sourc
 1. **Manage Jenkins → Plugins** : installer **SonarQube Scanner** (l’étape `waitForQualityGate` fait partie de ce plugin ; un plugin « Quality Gate » séparé n’est en général pas nécessaire).
 2. **Manage Jenkins → System → SonarQube servers** :
    - **Name** : `SonarQube` (**identique** au libellé dans `withSonarQubeEnv('SonarQube')` du `Jenkinsfile`).
-   - **Server URL** : ex. `http://host.docker.internal:9000` si Sonar tourne sur la machine hôte et Jenkins en conteneur.
+   - **Server URL** : doit être **joignable depuis l’agent** qui exécute le pipeline (pas forcément depuis ton navigateur).
+     - Jenkins **dans Docker**, SonarQube sur **l’hôte** : ne pas utiliser `http://localhost:9000` (dans le conteneur, `localhost` = le conteneur Jenkins → `ECONNREFUSED`). Utiliser par ex. :
+       - **Windows / macOS (Docker Desktop)** : `http://host.docker.internal:9000`
+       - **Linux** : souvent `http://172.17.0.1:9000` (passerelle du réseau `bridge`) ou l’IP LAN de la machine hôte.
+     - Même URL à mettre ici **ou** laisser l’URL « interne » ici et définir sur le **job** la variable **`SONAR_HOST_URL_OVERRIDE`** avec cette URL (prioritaire pour `scripts/sonar-scan.mjs`).
    - **Server authentication token** : coller le token Sonar (credentials Jenkins).
 3. *(Option)* **Global Tool Configuration** : ajouter **SonarQube Scanner** si tu préfères le binaire Java au lieu de `npx` ; le dépôt utilise déjà `node scripts/sonar-scan.mjs` (pas d’obligation).
 
