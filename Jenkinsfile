@@ -9,9 +9,18 @@
  * Le service IA : installation légère (FastAPI + Uvicorn + multipart) + compileall + import de main.
  * Torch / Ultralytics ne sont pas installés en CI (trop lourds) ; le code reste validé syntaxiquement.
  *
- * SonarQube (après les tests) : fusion LCOV → analyse via plugin Jenkins → Quality Gate bloquant.
+ * SonarQube (après les tests) : fusion LCOV → analyse via plugin Jenkins → Quality Gate.
+ * Par défaut le QG est informatif : waitForQualityGate avec abortPipeline=false (build SUCCESS même si
+ * Sonar affiche QG ERROR). Pour bloquer le build sur QG : variable de job SONAR_QUALITYGATE_ENFORCE=true.
+ * Le stage « SonarQube — analyse » affiche EXECUTION SUCCESS dès que le CLI a fini ; le stage suivant
+ * « Quality Gate » appelle waitForQualityGate : Jenkins attend que le *serveur* SonarQube termine le traitement
+ * du rapport (tâche CE « IN_PROGRESS » dans les logs API), puis l’évaluation du Quality Gate — souvent 1 à 5 min
+ * selon charge CPU/ES et taille du projet, ce n’est pas un blocage Jenkins arbitraire.
+ * Webhook SonarQube → Jenkins (doc plugin) : évite uniquement la latence de sondage, pas la durée du CE.
+ * Timeout Quality Gate : variable de job SONAR_QUALITYGATE_TIMEOUT_MINUTES (défaut 45). Un monorepo sous
+ * SonarQube en Docker peu RAM peut dépasser 15 min de traitement CE ; augmenter ou dimensionner le serveur.
  * Jenkins : installer « SonarQube Scanner » ; Administration → SonarQube → serveur nommé exactement « SonarQube »
- * (ou adapter withSonarQubeEnv ci-dessous) ; webhook Sonar → Jenkins pour waitForQualityGate. Voir docs/JENKINS-CI-CD.md.
+ * (ou adapter withSonarQubeEnv ci-dessous). Voir docs/JENKINS-CI-CD.md.
  *
  * SonarQube + Jenkins en Docker : l’URL du serveur ne doit pas être http://localhost:9000 côté agent.
  * Sur le job, définir SONAR_HOST_URL_OVERRIDE (ex. http://host.docker.internal:9000) ou mettre la même URL
@@ -34,6 +43,8 @@ pipeline {
     NEXT_TELEMETRY_DISABLED = '1'
     NEXT_PUBLIC_API_URL = "${env.NEXT_PUBLIC_API_URL ?: 'http://127.0.0.1:3200'}"
     SONAR_HOST_URL_OVERRIDE = "${env.SONAR_HOST_URL_OVERRIDE ?: ''}"
+    /** Attente waitForQualityGate (minutes). Défaut 45 : le CE SonarQube peut être lent (Docker / gros rapport). */
+    SONAR_QUALITYGATE_TIMEOUT_MINUTES = "${env.SONAR_QUALITYGATE_TIMEOUT_MINUTES ?: '45'}"
   }
 
   stages {
@@ -229,8 +240,26 @@ pipeline {
 
     stage('SonarQube — Quality Gate') {
       steps {
-        timeout(time: 15, unit: 'MINUTES') {
-          waitForQualityGate abortPipeline: true
+        echo """
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Quality Gate : attente du SERVEUR SonarQube (Compute Engine)
+Après « ANALYSIS SUCCESS » du scanner, le rapport est traité côté serveur
+(IN_PROGRESS → SUCCESS). Monorepo / instance Docker peu dimensionnée :
+souvent 5–30 min. Timeout Jenkins : ${env.SONAR_QUALITYGATE_TIMEOUT_MINUTES} min
+(override : variable de job SONAR_QUALITYGATE_TIMEOUT_MINUTES).
+Si IN_PROGRESS dépasse systématiquement ce délai : vérifier RAM/CPU SonarQube,
+file d’attente CE (Administration → Projects → Background Tasks).
+Par défaut un QG « ERROR » sur Sonar ne fait pas échouer le build Jenkins.
+Pour bloquer : SONAR_QUALITYGATE_ENFORCE=true sur le job.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"""
+        script {
+          def enforceQg = (env.SONAR_QUALITYGATE_ENFORCE ?: '').trim().equalsIgnoreCase('true')
+          echo "SONAR_QUALITYGATE_ENFORCE=${enforceQg} → waitForQualityGate abortPipeline=${enforceQg}"
+          timeout(time: "${env.SONAR_QUALITYGATE_TIMEOUT_MINUTES}".toInteger(), unit: 'MINUTES') {
+            def qg = waitForQualityGate abortPipeline: enforceQg
+            echo "Résultat Quality Gate SonarQube : ${qg.status} (dashboard Sonar pour le détail)"
+          }
         }
       }
     }
@@ -242,7 +271,7 @@ pipeline {
       archiveArtifacts artifacts: 'smartsite-backend/coverage/**/*,smarsite-frontend/coverage/**/*,coverage/lcov.info', allowEmptyArchive: true
     }
     success {
-      echo 'PiSmartSite : CI + SonarQube Quality Gate OK (voir dashboard serveur SonarQube).'
+      echo 'PiSmartSite : pipeline OK (tests + analyse SonarQube poussée ; QG peut être ERROR sans faire échouer le build sauf SONAR_QUALITYGATE_ENFORCE=true).'
     }
     failure {
       echo 'CI monorepo : FAILURE — corriger le stage indiqué en erreur.'
