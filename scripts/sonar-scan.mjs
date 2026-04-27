@@ -1,14 +1,15 @@
 /**
- * SonarQube / SonarCloud — scanner npm v4 (bootstrapper) + SonarScanner CLI Java.
+ * SonarQube — lancement du scanner npm v4 (bootstrapper + CLI Java).
  *
- * Sur SonarQube **Server** 9.9, le CLI Java exige en pratique un jeton utilisateur comme
- * **sonar.login** (voir message « Please provide a user token in sonar.login »). Seul
- * SONAR_TOKEN ne suffit pas toujours une fois le bootstrapper npm lancé le JRE.
- * On passe donc -Dsonar.login=… via SONAR_SCANNER_OPTS (hérité par le processus Java).
+ * Authentification : le bootstrapper transmet les paramètres au JVM via
+ * SONAR_SCANNER_JSON_PARAMS (doc SonarSource), pas via SONAR_SCANNER_OPTS seul.
+ * @see https://docs.sonarsource.com/sonarqube-server/latest/analyzing-source-code/scanners/npm/configuring
  *
- * URL : SONAR_HOST_URL_OVERRIDE / SONAR_HOST_URL (Jenkins + Docker : host.docker.internal).
+ * Jenkins : utiliser withCredentials (Secret text) pour SONAR_TOKEN — withSonarQubeEnv
+ * fournit surtout SONAR_HOST_URL ; le jeton du bloc « SonarQube servers » n’est pas
+ * toujours exposé à node scripts/sonar-scan.mjs.
  *
- * @see https://docs.sonarsource.com/sonarqube-server/latest/analyzing-source-code/scanners/npm/introduction/
+ * URL : SONAR_HOST_URL_OVERRIDE > SONAR_HOST_URL (withSonarQubeEnv).
  */
 import { spawnSync } from "node:child_process";
 
@@ -17,7 +18,9 @@ const token =
   process.env.SONAR_AUTH_TOKEN?.trim();
 if (!token) {
   console.error(
-    "SONAR_TOKEN (ou SONAR_AUTH_TOKEN) manquant. Jenkins : withSonarQubeEnv + token sur le serveur SonarQube, ou credentials « Secret text » sur le job.",
+    "SONAR_TOKEN ou SONAR_AUTH_TOKEN manquant.\n" +
+      "Jenkins : ajouter withCredentials(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN') " +
+      "autour de l’étape (Secret text = jet utilisateur SonarQube, voir Jenkinsfile + docs).",
   );
   process.exit(1);
 }
@@ -29,19 +32,25 @@ const fromEnv =
   process.env.SONAR_HOST_URL?.trim() || process.env.SONARQUBE_HOST?.trim();
 const host = override || fromEnv;
 
+// Paramètres d’analyse pour le CLI Java (priorité documentée npm v4)
+const jsonParams = {
+  // SQ 9.9 LTS + Scanner 6 : jeton utilisateur (User token) dans sonar.login
+  "sonar.login": token,
+};
+if (host) {
+  jsonParams["sonar.host.url"] = host;
+}
+
 const childEnv = { ...process.env };
 delete childEnv.SONARQUBE_SCANNER_PARAMS;
-// Évite que le CLI Java ignore sonar.login si sonar.token est aussi défini vide / incohérent
-delete childEnv.SONAR_TOKEN;
-delete childEnv.SONAR_AUTH_TOKEN;
+delete childEnv.SONAR_SCANNER_JSON_PARAMS;
 delete childEnv.SONAR_SCANNER_OPTS;
+
+childEnv.SONAR_SCANNER_JSON_PARAMS = JSON.stringify(jsonParams);
 
 if (host) {
   childEnv.SONAR_HOST_URL = host;
 }
-
-// Jeton utilisateur SonarQube : propriété attendue par SonarScanner 6 + SQ 9.9 LTS
-childEnv.SONAR_SCANNER_OPTS = `-Dsonar.login=${token}`;
 
 const isWin = process.platform === "win32";
 const res = spawnSync(isWin ? "npx.cmd" : "npx", ["-y", "sonarqube-scanner"], {

@@ -16,6 +16,9 @@
  * SonarQube + Jenkins en Docker : l’URL du serveur ne doit pas être http://localhost:9000 côté agent.
  * Sur le job, définir SONAR_HOST_URL_OVERRIDE (ex. http://host.docker.internal:9000) ou mettre la même URL
  * dans Manage Jenkins → System → SonarQube servers (joignable depuis le conteneur).
+ *
+ * Sonar analyse : credential Jenkins « Secret text » id **sonar-token** (jeton utilisateur SonarQube).
+ * Variable de job optionnelle SONAR_TOKEN_CREDENTIAL_ID si tu utilises un autre id.
  */
 pipeline {
   agent any
@@ -207,12 +210,19 @@ pipeline {
 
     stage('SonarQube — analyse') {
       steps {
-        withSonarQubeEnv('SonarQube') {
-          sh '''
-            set -e
-            echo ">>> Scanner monorepo (sonar-project.properties à la racine — backend, frontend, IA Python)"
-            node scripts/sonar-scan.mjs
-          '''
+        withCredentials([
+          string(
+            credentialsId: "${env.SONAR_TOKEN_CREDENTIAL_ID ?: 'sonar-token'}",
+            variable: 'SONAR_TOKEN',
+          ),
+        ]) {
+          withSonarQubeEnv('SonarQube') {
+            sh '''
+              set -e
+              echo ">>> Scanner monorepo (sonar-project.properties — auth via SONAR_SCANNER_JSON_PARAMS + SONAR_TOKEN)"
+              node scripts/sonar-scan.mjs
+            '''
+          }
         }
       }
     }

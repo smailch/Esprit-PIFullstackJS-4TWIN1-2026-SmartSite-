@@ -139,7 +139,7 @@ npm run build
 Le monorepo inclut **`sonar-project.properties`** (clé **`PiSmartSite`**, sources backend + frontend + `smartsite-ai-service`, LCOV fusionné `coverage/lcov.info`). Après les tests parallèles, Jenkins enchaîne :
 
 1. **`SonarQube — fusion LCOV`** : `node scripts/sonar-prep-lcov.mjs` (réutilise les `lcov.info` produits par Jest/Vitest, sans relancer les tests).
-2. **`SonarQube — analyse`** : `withSonarQubeEnv('SonarQube')` + `node scripts/sonar-scan.mjs` (CLI via `npx sonarqube-scanner`).
+2. **`SonarQube — analyse`** : `withCredentials` (**`sonar-token`**) + `withSonarQubeEnv('SonarQube')` + `node scripts/sonar-scan.mjs` (auth via `SONAR_SCANNER_JSON_PARAMS`, CLI `npx sonarqube-scanner`).
 3. **`SonarQube — Quality Gate`** : `waitForQualityGate abortPipeline: true` — **échec du build** si le Quality Gate est **FAILED** sur le serveur SonarQube.
 
 ### 7.1 Serveur SonarQube
@@ -158,7 +158,12 @@ Le monorepo inclut **`sonar-project.properties`** (clé **`PiSmartSite`**, sourc
        - **Windows / macOS (Docker Desktop)** : `http://host.docker.internal:9000`
        - **Linux** : souvent `http://172.17.0.1:9000` (passerelle du réseau `bridge`) ou l’IP LAN de la machine hôte.
      - Même URL à mettre ici **ou** laisser l’URL « interne » ici et définir sur le **job** la variable **`SONAR_HOST_URL_OVERRIDE`** avec cette URL (prioritaire pour `scripts/sonar-scan.mjs`).
-   - **Server authentication token** : coller le token Sonar (credentials Jenkins).
+   - **Server authentication token** : coller le token Sonar (credentials Jenkins) — utile pour d’autres intégrations ; **le `Jenkinsfile` du dépôt exige en plus** un Secret text dédié (voir ci‑dessous).
+
+3. **Credential obligatoire pour le pipeline** : **Manage Jenkins → Credentials** → *Add* → **Secret text**  
+   - **Secret** : le jeton généré dans SonarQube (*My Account → Security → Generate Tokens*).  
+   - **ID** : exactement **`sonar-token`** (ou un autre id + variable de job `SONAR_TOKEN_CREDENTIAL_ID`).  
+   Sans ce credential, l’étape `withCredentials` du stage *SonarQube — analyse* échoue : le jeton du bloc « SonarQube servers » n’est **pas** toujours injecté dans `node scripts/sonar-scan.mjs`.
 
 **Navigateur vs Jenkins (souvent confondu)**  
 
@@ -168,7 +173,7 @@ Le monorepo inclut **`sonar-project.properties`** (clé **`PiSmartSite`**, sourc
   `docker exec -it pismartsite-jenkins curl -sI http://host.docker.internal:9000`  
   Si ça échoue, utilise à la place l’**adresse IPv4 de ton PC** sur le réseau local (voir `ipconfig` → « Adresse IPv4 », ex. `http://192.168.1.42:9000`) dans **`SONAR_HOST_URL_OVERRIDE`** et, si besoin, ouvre le port 9000 du pare-feu Windows pour le réseau privé. Cette même URL fonctionne souvent à la fois depuis le conteneur et depuis d’autres machines du LAN.
 
-3. *(Option)* **Global Tool Configuration** : ajouter **SonarQube Scanner** si tu préfères le binaire Java au lieu de `npx` ; le dépôt utilise déjà `node scripts/sonar-scan.mjs` (pas d’obligation).
+4. *(Option)* **Global Tool Configuration** : ajouter **SonarQube Scanner** si tu préfères le binaire Java au lieu de `npx` ; le dépôt utilise déjà `node scripts/sonar-scan.mjs` (pas d’obligation).
 
 ### 7.3 Webhook (indispensable pour `waitForQualityGate`)
 
