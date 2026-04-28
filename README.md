@@ -1,152 +1,163 @@
-# Pi SmartSite
+<h1 align="center">PiSmartSite</h1>
 
-Dépôt : **[github.com/smailch/PiSmartSite](https://github.com/smailch/PiSmartSite)**
+<p align="center" style="margin: 15px;">
+  <img src="https://readme-typing-svg.herokuapp.com?duration=2000&color=00BFFF&center=true&vCenter=true&width=500&lines=Full-stack+platform+for+construction+sites;Project+%26+task+management;Gantt+planning+%2B+Kanban;Documents+%26+progress+photos;Optional+AI+%28Groq%2C+Gemini%2C+OpenRouter%29" alt="Typing SVG" />
+</p>
 
-Plateforme full stack pour la gestion de projets de construction, rénovation et maintenance : tableau de bord, tâches, ressources, planning (Gantt), rapports et assistants IA.
+<h3 align="center">🏗️ Construction & maintenance · Projects, tasks, team, and budget</h3>
+<h3 align="center">⚡ React Frontend (Next.js) · NestJS · MongoDB · PI Full Stack JS (ESPRIT)</h3>
 
-## Stack technique
+<p align="center">
+  📚 <strong>Academic project</strong> · Supervisor: <strong>Sassi Soumaya</strong>
+</p>
 
-| Couche | Technologie |
-|--------|-------------|
-| **Frontend** | **React** (bibliothèque UI) avec **Next.js** (App Router, SSR/CSR, API routes) |
-| **UI** | React 19, Tailwind CSS, Radix UI |
+<p align="center">
+  <img src="https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js" />
+  <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
+  <img src="https://img.shields.io/badge/NestJS-E0234E?style=for-the-badge&logo=nestjs&logoColor=white" alt="NestJS" />
+  <img src="https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB" />
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+</p>
+
+---
+
+## Overview
+
+PiSmartSite is a web application designed to manage construction projects end to end: project planning, tasks, resources, budget tracking, documents, progress photos, and reporting.
+
+The frontend uses React with Next.js (App Router), the API is built with NestJS, and data is stored in MongoDB. An optional Python microservice (`FastAPI + YOLO`) can be used for construction photo analysis.
+
+## Features
+
+- CRUD for **projects**, **tasks**, **resources**, **jobs** (progress and photos), **people**, equipment, and attendance
+- **Gantt** planning and **Kanban** workflow
+- **Document management** (with versions) and **progress photo workflows** (validation + optional AI estimation)
+- **AI features**: project analysis (Groq backend), task suggestions (OpenRouter / Next routes), optional Gemini debugging
+- Modular REST API
+
+## Tech Stack
+
+### Frontend
+
+- Next.js (React, App Router)
+- TypeScript
+- Tailwind CSS
+- Radix UI
+
+### Backend
+
+- NestJS
+- Node.js
+- MongoDB (Mongoose)
+
+Additional optional service:
+- Python
+- FastAPI
+- YOLO
+
+## Architecture
+
+| Layer | Technology |
+|------|------------|
+| **Frontend** | React + Next.js (App Router), Tailwind, Radix UI |
 | **Backend** | NestJS, Mongoose |
-| **IA chantier (optionnel)** | Service Python `smartsite-ai-service` (FastAPI, Ultralytics YOLO) — appelé par Nest pour `POST /jobs/:id/progress/photo` |
-| **Base de données** | MongoDB |
+| **AI Service** | `smartsite-ai-service` - FastAPI, YOLO |
+| **Database** | MongoDB |
 
-Le frontend n’est pas une app React « CLI » classique seule : il est basé sur **Next.js**, qui utilise **React** pour tous les composants et l’état côté client.
+Repository structure:
 
-## Fonctionnalités principales
-
-- CRUD projets, tâches, ressources agrégées, jobs (liés aux tâches, avancement + IA), humains, équipement, présences
-- Budget, Gantt, rapports
-- **IA** : analyse projet (Groq, backend), assistant chat + rapport initial (Groq), suggestions de tâches avec dépendances (OpenRouter, route Next)
-- Tableau Kanban des tâches, liens projet → board
-
-## Structure du dépôt
-
-```
+```text
 PiSmartSite/
-├── smarsite-frontend/     # Next.js + React
-├── smartsite-backend/     # API NestJS
-├── smartsite-ai-service/  # FastAPI + YOLO — analyse sécurité (casque / gilet) sur photos d’avancement job
+├── smarsite-frontend/    # Next.js frontend
+├── smartsite-backend/    # NestJS API
+├── smartsite-ai-service/ # FastAPI + YOLO (optional construction AI service)
 ├── .gitignore
 └── README.md
 ```
 
-## Prérequis
+## Contributors
 
-- **Node.js** 18+ (recommandé : LTS actuelle)
-- **npm** ou **pnpm**
-- **MongoDB** (local ou Atlas)
+- Smail Chemlali - Team member
+- Walid Gobji - Team member
+- Ahmed Allaya - Team member
+- Frigui Wassim - Team member
+- Mourad Missaoui - Team member
 
-## Installation
+## Academic Context
 
-### Backend
+Developed at **Esprit School of Engineering - Tunisia**  
+PI Full Stack JS - 4TWIN1 | Academic Year 2025-2026
 
-```bash
-cd smartsite-backend
-npm install
-cp .env.example .env
-# Éditer .env : GROQ_API_KEY, MongoDB si besoin
-npm run start:dev
-```
+This project is part of the academic curriculum of **Esprit School of Engineering**.
 
-API par défaut : **http://localhost:3200**
+## Getting Started
 
-### Service IA chantier (`smartsite-ai-service`, optionnel)
+Prerequisites:
 
-Utilisé par le backend lors de l’upload d’une **photo d’avancement** sur un job (`POST /jobs/:id/progress/photo`). Sans ce service, l’API enregistre quand même la photo mais l’analyse retombe sur un message « service indisponible ».
-
-```bash
-cd smartsite-ai-service
-python -m venv .venv
-# Windows : .venv\Scripts\activate
-pip install -r requirements.txt
-# Placer les poids YOLO (ex. weights/detect.pt) puis :
-set YOLO_MODEL_PATH=weights\detect.pt
-uvicorn main:app --host 0.0.0.0 --port 8001
-```
-
-Dans `smartsite-backend/.env` : `AI_ANALYSIS_URL=http://127.0.0.1:8001/analyze-image` (voir `.env.example`).
+- Node.js **18+**
+- **npm** or pnpm
+- **MongoDB** (local or Atlas)
+- Python **3.x** (only for `smartsite-ai-service`)
 
 ### Frontend
 
 ```bash
 cd smarsite-frontend
 npm install
-cp .env.example .env.local
-# Éditer .env.local : NEXT_PUBLIC_API_URL, OPENROUTER_API_KEY si vous utilisez les suggestions IA
 npm run dev
 ```
 
-Application : **http://localhost:3000**
-
-## Clés API : rester fonctionnel sans les committer
-
-Objectif : **le projet reste utilisable en local** avec de vraies clés, **sans jamais les pousser sur Git**.
-
-| Mécanisme | Rôle |
-|-----------|------|
-| **`.env.example`** | Fichiers **versionnés** avec des **placeholders** (`your_*_key_here`) et la liste des variables. |
-| **`.env` / `.env.local`** | Fichiers **ignorés par Git** où chaque développeur colle ses **vraies clés**. Copie depuis `.env.example`. |
-
-### Règles
-
-1. Ne **committez pas** `.env`, `.env.local` ni de fichiers contenant des secrets.
-2. Après un `git clone`, faites **une copie** :  
-   `cp smartsite-backend/.env.example smartsite-backend/.env`  
-   `cp smarsite-frontend/.env.example smarsite-frontend/.env.local`
-3. Renseignez les clés dans ces copies locales uniquement.
-4. En **CI/CD** (GitHub Actions, etc.), utilisez les **secrets du dépôt** pour injecter les variables au build/runtime — pas de clés dans le code.
-
-### Variables utiles
-
-**Backend (`smartsite-backend/.env`)** — voir `smartsite-backend/.env.example` :
-
-- `GROQ_API_KEY` — analyse projet + assistant (obligatoire pour ces modules)
-
-**Frontend (`smarsite-frontend/.env.local`)** — voir `smarsite-frontend/.env.example` :
-
-- `NEXT_PUBLIC_API_URL` — URL du backend (ex. `http://localhost:3200`)
-- `OPENROUTER_API_KEY` / `OPENROUTER_MODEL` — génération des tâches suggérées (optionnel)
-
-CORS du backend est configuré pour **http://localhost:3000** ; adaptez-le pour un autre domaine en production.
-
-## Mise à jour de la branche `main`
-
-Pour **remplacer** l’historique actuel de `main` par cette version du dépôt local (à faire avec précaution, équipe prévenue) :
+### Backend
 
 ```bash
-git checkout main
-git pull origin main
-# Sauvegarder une branche de secours si besoin : git branch backup/main-ancien
-git reset --hard <commit-de-cette-version>
-# ou fusion / push forcé selon votre politique
-# git push origin main --force-with-lease
+cd smartsite-backend
+npm install
+npm run start:dev
 ```
 
-Préférez en général une **PR** ou un **merge** plutôt qu’un push forcé sur `main`, sauf décision d’équipe.
+- Application: [http://localhost:3000](http://localhost:3000)
+- API: [http://localhost:3200](http://localhost:3200)
 
-## Scripts utiles
+Environment files:
 
-### Frontend (`smarsite-frontend`)
+- Frontend: `smarsite-frontend/.env.local` (template: `.env.example`)
+- Backend: `smartsite-backend/.env` (template: `.env.example`)
 
-| Script | Commande |
+### Optional AI Service (`smartsite-ai-service`)
+
+```bash
+cd smartsite-ai-service
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+set YOLO_MODEL_PATH=weights\best.pt
+uvicorn main:app --host 0.0.0.0 --port 8001
+```
+
+In `smartsite-backend/.env`, set:
+`AI_ANALYSIS_URL=http://127.0.0.1:8001/analyze-image` (see `.env.example`).
+
+Useful scripts:
+
+| Folder | Commands |
 |--------|----------|
-| Développement | `npm run dev` |
-| Build | `npm run build` |
-| Lint | `npm run lint` |
+| `smarsite-frontend` | `npm run dev` · `build` · `start` · `lint` |
+| `smartsite-backend` | `npm run start:dev` · `build` · `start:prod` · `lint` · `test` · `migrate:tasks:dates` |
 
-### Backend (`smartsite-backend`)
+Best practices:
 
-| Script | Commande |
-|--------|----------|
-| Développement | `npm run start:dev` |
-| Build | `npm run build` |
-| Tests | `npm run test` |
-| Migration tâches (dates) | `npm run migrate:tasks:dates` |
+- Never commit secrets (`.env` / `.env.local` should remain local)
+- Adjust CORS and MongoDB URI per environment
 
-## Licence / support
+## Acknowledgments
 
-Projet maintenu dans [PiSmartSite](https://github.com/smailch/PiSmartSite). Ouvrez une **issue** sur le dépôt pour signaler un bug ou une évolution.
+Special thanks to our supervisor Sassi Soumaya for her guidance and support, and to the teaching team at **Esprit School of Engineering**.
+
+## Dream House 3D (WIP)
+
+- Added a dedicated concept track for an immersive **Dream House 3D** experience.
+- Goal: allow stakeholders to preview project spaces with a simple interactive 3D navigation.
+- Current scope for this iteration: documentation and quality benchmark preparation.
+
+<p align="center"> ⭐️ <em>PiSmartSite - PI Full Stack JS - ESPRIT</em> </p>
+<p align="center"> <img src="https://camo.githubusercontent.com/64b973cb57806dd2b625e57e40571ce9ca4b4086d5c1ca932910cdaed296020a/68747470733a2f2f6d656469612e67697068792e636f6d2f6d656469612f7a356943766f316f4362717437756b4d51732f67697068792e676966" alt="" width="300"/> </p>
