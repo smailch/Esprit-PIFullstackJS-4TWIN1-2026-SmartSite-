@@ -43,6 +43,12 @@ We strategically delegated tasks to different AI tools based on their strengths:
 - 🗣️ **Meta-Prompting:** Writing highly optimized prompts to feed to our IDE coding agents (ChatGPT, DeepSeek).
 - 📑 **Documentation & Reporting:** Generating academic reports and creating visual presentations (Canva, Gamma AI).
 
+## Critical Review & Responsible AI Usage
+To ensure the quality and security of our platform, all AI-generated outputs were treated as drafts rather than final solutions. Our team applied a strict validation process:
+- **Manual Code Review:** All AI-generated code was reviewed by team members to ensure it aligned with our NestJS/Next.js architecture rules.
+- **Security & Environment:** We never pasted sensitive data (like real `.env` variables or private credentials) into LLM prompts.
+- **Testing Verification:** AI-generated unit tests were verified manually to ensure they tested actual edge cases and didn't just aim for artificial coverage.
+
 ## Prompts Used (Examples)
 Here are representative examples of the exact prompts we used to interact with the AI tools across different stages of the project:
 
