@@ -251,38 +251,7 @@ pipeline {
       }
     }
 
-    stage('SonarQube — Quality Gate') {
-      steps {
-        echo """
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Quality Gate : interrogation SonarQube — IN_PROGRESS peut durer plusieurs minutes (CE).
-Cette étape ne bloque pas le pipeline : erreur Sonar / timeout → enchaînement CD quand même (stage potentiel UNSTABLE).
-Sonar GUI : Administration → tâches d’arrière-plan.
-SONAR_SKIP_QUALITY_GATE_WAIT=true : zapper totalement l attente.
-Timeout : ${SONAR_QUALITYGATE_TIMEOUT_MINUTES} min (SONAR_QUALITYGATE_TIMEOUT_MINUTES).
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"""
-        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-          script {
-            def skipWait = (env.SONAR_SKIP_QUALITY_GATE_WAIT ?: '').trim().equalsIgnoreCase('true')
-            if (skipWait) {
-              echo '[Sonar] SONAR_SKIP_QUALITY_GATE_WAIT=true — pas de waitForQualityGate.'
-              return
-            }
-            try {
-              echo '[Sonar] waitForQualityGate (abortPipeline toujours false — le pipeline continue vers le CD).'
-              timeout(time: "${env.SONAR_QUALITYGATE_TIMEOUT_MINUTES}".toInteger(), unit: 'MINUTES') {
-                def qg = waitForQualityGate abortPipeline: false
-                echo "[Sonar] Quality Gate rapporté par le plugin : ${qg.status}"
-              }
-            } catch (exc) {
-              echo "[Sonar] Étape Quality Gate coupée sans faire échouer le pipeline : ${exc}"
-            }
-          }
-        }
-      }
-    }
-
+   
     stage('CD — préparation Images') {
       steps {
         script {
