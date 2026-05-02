@@ -158,16 +158,14 @@ pipeline {
           fi
         '''
         script {
-          def extra = []
-          if (fileExists('.ci-tools/python/bin/python3') || fileExists('.ci-tools/python/bin/python3.11')) {
-            extra.add("${env.WORKSPACE}/.ci-tools/python/bin")
-          }
-          if (fileExists('.ci-tools/node/bin/node')) {
-            extra.add("${env.WORKSPACE}/.ci-tools/node/bin")
-          }
-          if (!extra.isEmpty()) {
-            env.PATH = extra.join(':') + ':' + env.PATH
-          }
+          def ws = env.WORKSPACE
+          /*
+           * Ancienne logique fileExists('.ci-tools/…') peu fiable sous Jenkins (chemins relatifs avec .ci-tools).
+           * Toujours préfixer le PATH après le bootstrap : dossiers créés lors des téléchargements ;
+           * si dossiers absents, les segments vides sont ignorés par la résolution bash.
+           */
+          env.PATH = "${ws}/.ci-tools/python/bin:${ws}/.ci-tools/node/bin:${env.PATH}"
+          echo "[Bootstrap] PATH préfixé .ci-tools (node + python) pour les stages suivants."
         }
       }
     }
