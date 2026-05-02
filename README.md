@@ -159,5 +159,52 @@ Special thanks to our supervisor Sassi Soumaya for her guidance and support, and
 - Goal: allow stakeholders to preview project spaces with a simple interactive 3D navigation.
 - Current scope for this iteration: documentation and quality benchmark preparation.
 
+  ---
+
+## AI Usage
+
+This project integrated AI tools to assist with development, debugging, documentation, testing, and Git operations.
+
+### ✅ AI Tools Used
+- **GitHub Copilot** (Agent code)
+- **Cursor AI** (Agent code)
+- **ChatGPT** (OpenAI)
+- **Claude** (Anthropic) — Agent code
+- **DeepSeek** (architecture & logic analysis)
+- **Canva AI** (report/presentation layout)
+
+### ✅ How AI Was Used
+- **Code generation:** components, DTOs, CRUD endpoints, UI helpers  
+- **Debugging:** NestJS runtime errors, React rendering issues, API failures  
+- **Documentation:** README sections, setup guides, architecture notes  
+- **Testing:** test case ideas and edge‑case coverage  
+- **Architecture & logic:** module boundaries, flows, and service interactions  
+- **Git commands:** commit guidance and workflow suggestions  
+- **Reporting:** Canva AI for academic report and slides design  
+
+### ✅ Prompts (Examples)
+- “Generate a NestJS module for project CRUD with Mongoose schema.”  
+- “Create a Next.js page with a Kanban board using Tailwind.”  
+- “Explain why this React hook causes re-render loops.”  
+- “Draft a README section for environment setup.”  
+- “Suggest edge cases for task scheduling with Gantt dependencies.”  
+- “Summarize backend architecture for an academic report.”  
+
+### ✅ LLMs & Agents
+- **GitHub Copilot Agent** — code, debugging, documentation, testing, git commands  
+- **Cursor AI Agent** — code, debugging, documentation, testing, git commands  
+- **Claude Agent** — code, debugging, documentation, testing, git commands  
+- **ChatGPT** — architecture & documentation  
+- **DeepSeek** — architecture & system logic  
+
+### ✅ Canva AI Report
+Canva AI was used to generate the **layout and visuals** for the final academic report and presentation.
+
+## Acknowledgment
+
+<p align="center">
+  <strong>🙏 Special thanks to our supervisor, Sassi Soumaya</strong><br/>
+  for her guidance, support, and valuable feedback throughout this project.
+</p>
 <p align="center"> ⭐️ <em>PiSmartSite - PI Full Stack JS - ESPRIT</em> </p>
 <p align="center"> <img src="https://camo.githubusercontent.com/64b973cb57806dd2b625e57e40571ce9ca4b4086d5c1ca932910cdaed296020a/68747470733a2f2f6d656469612e67697068792e636f6d2f6d656469612f7a356943766f316f4362717437756b4d51732f67697068792e676966" alt="" width="300"/> </p>
