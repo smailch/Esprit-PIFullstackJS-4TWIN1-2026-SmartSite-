@@ -1,0 +1,12 @@
+# Jenkins LTS + client Docker pour parler au moteur via docker.sock (Docker Desktop ou Linux).
+FROM jenkins/jenkins:lts-jdk21
+
+USER root
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends docker.io \
+    && rm -rf /var/lib/apt/lists/*
+
+# Accès au socket monté depuis l’hôte (groupe docker du conteneur ≈ souvent aligné avec Desktop)
+RUN usermod -aG docker jenkins
+
+USER jenkins

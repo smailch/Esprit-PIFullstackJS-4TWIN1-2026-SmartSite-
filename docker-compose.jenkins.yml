@@ -1,22 +1,37 @@
-# Jenkins LTS pour PiSmartSite (optionnel)
-# Démarrage : docker compose -f docker-compose.jenkins.yml up -d
-# UI : http://localhost:8080 — mot de passe admin dans les logs du conteneur au premier démarrage.
+# Jenkins pour PiSmartSite — Docker Desktop (Windows / Mac) ou Linux
 #
-# Plugins à installer depuis « Manage Jenkins → Plugins » :
-#   Git, Pipeline, NodeJS Plugin (et éventuellement Blue Ocean).
+# Prérequis : Docker Desktop démarré (ou moteur Docker sur Linux).
 #
-# Node.js : Manage Jenkins → Tools → NodeJS installations → Name : nodejs-22 → Version 22.x
+# Démarche :
+#   docker compose -f docker-compose.jenkins.yml build --no-cache
+#   docker compose -f docker-compose.jenkins.yml up -d
+#
+# Interface : http://localhost:8080
+# Premier démarrage : mot de passe admin dans les logs :
+#   docker logs pismartsite-jenkins
+#
+# Docker dans le pipeline : le conteneur monte docker.sock pour utiliser le MÊME moteur
+# que Docker Desktop (pas de Docker-in-Docker). La CLI docker est incluse dans l’image buildée.
+#
+# Si « permission denied » sur docker.sock : relance après
+#   docker compose ... down && docker compose ... up --build
 
 services:
   jenkins:
-    image: jenkins/jenkins:lts-jdk21
+    build:
+      context: .
+      dockerfile: Dockerfile.jenkins
     container_name: pismartsite-jenkins
     ports:
       - "8080:8080"
       - "50000:50000"
     volumes:
       - jenkins_home:/var/jenkins_home
+      # Socket du moteur Docker (fonctionne avec Docker Desktop en mode Linux containers)
+      - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
+    # Si échec persistant sur docker.sock sous Windows, tester temporairement (démo seulement) :
+    # user: "0:0"
 
 volumes:
   jenkins_home:
