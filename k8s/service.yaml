@@ -1,0 +1,71 @@
+# Services pour backend / frontend / IA (NodePort externes documentés dans k8s/README.md).
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  labels:
+    app: pismartsite
+    component: backend
+spec:
+  type: ClusterIP
+  selector:
+    app: pismartsite
+    component: backend
+  ports:
+    - port: 3200
+      targetPort: http
+      name: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-nodeport
+  labels:
+    app: pismartsite
+    component: backend
+spec:
+  type: NodePort
+  selector:
+    app: pismartsite
+    component: backend
+  ports:
+    - port: 3200
+      targetPort: http
+      nodePort: 30320
+      name: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  labels:
+    app: pismartsite
+    component: frontend
+spec:
+  type: NodePort
+  selector:
+    app: pismartsite
+    component: frontend
+  ports:
+    - port: 3000
+      targetPort: http
+      nodePort: 30080
+      name: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: smartsite-ai
+  labels:
+    app: pismartsite
+    component: ai
+spec:
+  type: ClusterIP
+  selector:
+    app: pismartsite
+    component: ai
+  ports:
+    - port: 8001
+      targetPort: http
+      name: http

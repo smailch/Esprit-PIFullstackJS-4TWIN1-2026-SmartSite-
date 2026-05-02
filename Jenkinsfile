@@ -1,33 +1,19 @@
 /**
- * PiSmartSite — CI monorepo (1 job) : Backend NestJS + Frontend Next.js + smartsite-ai-service (Python)
+ * PiSmartSite — CI/CD monorepo (NestJS backend + Next.js frontend + FastAPI/YOLO AI)
  *
- * Jenkins : Pipeline from SCM → Script Path = Jenkinsfile (racine du dépôt)
- * Prérequis : agent Linux (curl, tar, gzip), Git, plugin Pipeline.
- * Node et Python 3 sont mis en cache sous .ci-tools/ (1 seul stage, téléchargements en parallèle si besoin ;
- * Python = archive « install_only_stripped », plus légère que install_only).
+ * Phases :
+ *   1) CI : bootstrap cache .ci-tools, tests + build en parallèle
+ *   2) Sonar : fusion LCOV → scan → Quality Gate (comportement existant préservé)
+ *   3) CD : build/push Docker Hub puis déploiement Kubernetes (succès CI+Sonar requis avant CD)
  *
- * Le service IA : installation légère (FastAPI + Uvicorn + multipart) + compileall + import de main.
- * Torch / Ultralytics ne sont pas installés en CI (trop lourds) ; le code reste validé syntaxiquement.
- *
- * SonarQube (après les tests) : fusion LCOV → analyse via plugin Jenkins → Quality Gate.
- * Par défaut le QG est informatif : waitForQualityGate avec abortPipeline=false (build SUCCESS même si
- * Sonar affiche QG ERROR). Pour bloquer le build sur QG : variable de job SONAR_QUALITYGATE_ENFORCE=true.
- * Le stage « SonarQube — analyse » affiche EXECUTION SUCCESS dès que le CLI a fini ; le stage suivant
- * « Quality Gate » appelle waitForQualityGate : Jenkins attend que le *serveur* SonarQube termine le traitement
- * du rapport (tâche CE « IN_PROGRESS » dans les logs API), puis l’évaluation du Quality Gate — souvent 1 à 5 min
- * selon charge CPU/ES et taille du projet, ce n’est pas un blocage Jenkins arbitraire.
- * Webhook SonarQube → Jenkins (doc plugin) : évite uniquement la latence de sondage, pas la durée du CE.
- * Timeout Quality Gate : variable de job SONAR_QUALITYGATE_TIMEOUT_MINUTES (défaut 45). Un monorepo sous
- * SonarQube en Docker peu RAM peut dépasser 15 min de traitement CE ; augmenter ou dimensionner le serveur.
- * Jenkins : installer « SonarQube Scanner » ; Administration → SonarQube → serveur nommé exactement « SonarQube »
- * (ou adapter withSonarQubeEnv ci-dessous). Voir docs/JENKINS-CI-CD.md.
- *
- * SonarQube + Jenkins en Docker : l’URL du serveur ne doit pas être http://localhost:9000 côté agent.
- * Sur le job, définir SONAR_HOST_URL_OVERRIDE (ex. http://host.docker.internal:9000) ou mettre la même URL
- * dans Manage Jenkins → System → SonarQube servers (joignable depuis le conteneur).
- *
- * Sonar analyse : credential Jenkins « Secret text » id **sonar-token** (jeton utilisateur SonarQube).
- * Variable de job optionnelle SONAR_TOKEN_CREDENTIAL_ID si tu utilises un autre id.
+ * Variables utiles :
+ *   SKIP_CD=true — n’exécute pas Docker/K8s (CI + Sonar seuls).
+ *   DOCKER_IMAGE_OWNER — compte ou org Docker Hub (ex. jdoe).
+ *   DOCKER_CREDENTIAL_ID — credential Jenkins « Username with password » (défaut : dockerhub).
+ *   NEXT_PUBLIC_API_URL_BUILD — URL API pour le navigateur utilisée au build du front NodePort/Ingress ;
+ *                               si vide : reprise NEXT_PUBLIC_API_URL du job puis défaut local.
+ *   KUBECONFIG_CREDENTIAL_ID — credential « Secret file » kubeconfig (défaut : kubeconfig).
+ *   SONAR_* — inchangé (voir blocs Quality Gate ci-dessous).
  */
 pipeline {
   agent any
@@ -35,6 +21,15 @@ pipeline {
   options {
     timestamps()
     buildDiscarder(logRotator(numToKeepStr: '20'))
+    timeout(time: 4, unit: 'HOURS')
+  }
+
+  parameters {
+    booleanParam(
+      name: 'SKIP_CD',
+      defaultValue: false,
+      description: 'Cocher pour ne faire que CI + Sonar (pas Docker/Kubernetes).'
+    )
   }
 
   environment {
@@ -43,18 +38,30 @@ pipeline {
     NEXT_TELEMETRY_DISABLED = '1'
     NEXT_PUBLIC_API_URL = "${env.NEXT_PUBLIC_API_URL ?: 'http://127.0.0.1:3200'}"
     SONAR_HOST_URL_OVERRIDE = "${env.SONAR_HOST_URL_OVERRIDE ?: ''}"
-    /** Attente waitForQualityGate (minutes). Défaut 45 : le CE SonarQube peut être lent (Docker / gros rapport). */
     SONAR_QUALITYGATE_TIMEOUT_MINUTES = "${env.SONAR_QUALITYGATE_TIMEOUT_MINUTES ?: '45'}"
+    /** Identifiants optionnels Docker Hub pour le bloc CD */
+    DOCKER_CREDENTIAL_ID = "${env.DOCKER_CREDENTIAL_ID ?: 'dockerhub'}"
+    KUBECONFIG_CREDENTIAL_ID = "${env.KUBECONFIG_CREDENTIAL_ID ?: 'kubeconfig'}"
+    DOCKER_BUILDKIT = '1'
   }
 
   stages {
+
     stage('Checkout') {
       steps {
         checkout scm
+        script {
+          env.GIT_COMMIT_SHORT = sh(
+            script: 'git rev-parse --short=8 HEAD 2>/dev/null || echo local',
+            returnStdout: true
+          ).trim()
+          env.IMAGE_TAG_FULL = "${BUILD_NUMBER}-${env.GIT_COMMIT_SHORT}"
+          echo "[INFO] IMAGE_TAG_FULL=${IMAGE_TAG_FULL}"
+        }
       }
     }
 
-    stage('Bootstrap toolchain') {
+    stage('Bootstrap toolchain (.ci-tools)') {
       steps {
         sh '''
           set -e
@@ -84,7 +91,7 @@ pipeline {
           NODE_TMP=""
           PY_TMP=""
           if [ "$NEED_NODE" -eq 1 ] || [ "$NEED_PY" -eq 1 ]; then
-            echo ">>> Téléchargements (en parallèle si les deux manquent) — premier run plus long, puis cache .ci-tools/"
+            echo ">>> Téléchargements (en parallèle si besoin) — puis cache sous .ci-tools/"
           fi
           if [ "$NEED_NODE" -eq 1 ]; then
             NODE_VER=22.12.0
@@ -145,20 +152,20 @@ pipeline {
       }
     }
 
-    stage('Toolchain') {
+    stage('Toolchain — vérification') {
       steps {
         sh '''
           set -e
           echo ">>> Node / npm"
           node -v
           npm -v
-          echo ">>> Python (service IA)"
-          command -v python3 >/dev/null 2>&1 && python3 --version || { echo "python3 manquant sur l’agent"; exit 1; }
+          echo ">>> Python (service IA — même binaire utilisé ensuite pour venv léger CI)"
+          command -v python3 >/dev/null 2>&1 && python3 --version || { echo "python3 manquant"; exit 1; }
         '''
       }
     }
 
-    stage('CI — Backend, Frontend, AI service') {
+    stage('CI — tests & builds') {
       parallel {
         stage('Backend (NestJS)') {
           environment {
@@ -167,9 +174,9 @@ pipeline {
           steps {
             sh 'mkdir -p reports/junit/backend'
             dir('smartsite-backend') {
-              sh 'echo ">>> Backend: npm ci" && npm ci'
-              sh 'echo ">>> Backend: tests + coverage (échec = pipeline rouge)" && npm run test:cov:ci'
-              sh 'echo ">>> Backend: build" && npm run build'
+              sh 'echo "[CI] Backend: npm ci" && npm ci'
+              sh 'echo "[CI] Backend: tests + couverture" && npm run test:cov:ci'
+              sh 'echo "[CI] Backend: build" && npm run build'
             }
           }
         }
@@ -178,30 +185,30 @@ pipeline {
           steps {
             sh 'mkdir -p reports/junit'
             dir('smarsite-frontend') {
-              sh 'echo ">>> Frontend: npm ci" && npm ci'
-              sh 'echo ">>> Frontend: tests + coverage (échec = pipeline rouge)" && npm run test:cov:ci'
-              sh 'echo ">>> Frontend: build" && npm run build'
+              sh 'echo "[CI] Frontend: npm ci" && npm ci'
+              sh 'echo "[CI] Frontend: tests + couverture" && npm run test:cov:ci'
+              sh 'echo "[CI] Frontend: build" && npm run build'
             }
           }
         }
 
-        stage('AI service (Python / FastAPI)') {
+        stage('AI service (Python — léger, sans torch)') {
           steps {
             dir('smartsite-ai-service') {
               sh '''
                 set -e
                 if command -v python3 >/dev/null 2>&1; then PY=python3
                 elif command -v python >/dev/null 2>&1; then PY=python
-                else echo "Python 3 requis sur l’agent Jenkins pour smartsite-ai-service"; exit 1
+                else echo "[CI] Python 3 requis pour smartsite-ai-service"; exit 1
                 fi
-                echo ">>> AI service: venv + dépendances minimales (sans torch — CI rapide)"
+                echo "[CI] AI: venv + deps minimales + compile/import (sans torch/Ultralytics)"
                 $PY -m venv .venv-ci
                 . .venv-ci/bin/activate
                 pip install --upgrade pip -q
                 pip install -q fastapi==0.104.1 "uvicorn[standard]==0.24.0" python-multipart==0.0.6
                 $PY -m compileall -q .
                 $PY -c "import main; assert main.app.title == 'SmartSite AI'"
-                echo ">>> AI service: OK"
+                echo "[CI] AI: OK"
               '''
             }
           }
@@ -213,7 +220,7 @@ pipeline {
       steps {
         sh '''
           set -e
-          echo ">>> Fusion smartsite-backend + smarsite-frontend → coverage/lcov.info (sonar-project.properties)"
+          echo "[Sonar] Fusion backend + frontend → coverage/lcov.info"
           node scripts/sonar-prep-lcov.mjs
         '''
       }
@@ -230,7 +237,7 @@ pipeline {
           withSonarQubeEnv('SonarQube') {
             sh '''
               set -e
-              echo ">>> Scanner monorepo (sonar-project.properties — auth via SONAR_SCANNER_JSON_PARAMS + SONAR_TOKEN)"
+              echo "[Sonar] Scanner monorepo (scripts/sonar-scan.mjs)"
               node scripts/sonar-scan.mjs
             '''
           }
@@ -242,24 +249,163 @@ pipeline {
       steps {
         echo """
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Quality Gate : attente du SERVEUR SonarQube (Compute Engine)
-Après « ANALYSIS SUCCESS » du scanner, le rapport est traité côté serveur
-(IN_PROGRESS → SUCCESS). Monorepo / instance Docker peu dimensionnée :
-souvent 5–30 min. Timeout Jenkins : ${env.SONAR_QUALITYGATE_TIMEOUT_MINUTES} min
-(override : variable de job SONAR_QUALITYGATE_TIMEOUT_MINUTES).
-Si IN_PROGRESS dépasse systématiquement ce délai : vérifier RAM/CPU SonarQube,
-file d’attente CE (Administration → Projects → Background Tasks).
-Par défaut un QG « ERROR » sur Sonar ne fait pas échouer le build Jenkins.
-Pour bloquer : SONAR_QUALITYGATE_ENFORCE=true sur le job.
+Quality Gate : attente du serveur SonarQube (CE)
+Timeout : ${SONAR_QUALITYGATE_TIMEOUT_MINUTES} min ; bloquer Jenkins sur erreur :
+  SONAR_QUALITYGATE_ENFORCE=true
+Voir header historique Jenkinsfile pour détails.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
         script {
           def enforceQg = (env.SONAR_QUALITYGATE_ENFORCE ?: '').trim().equalsIgnoreCase('true')
-          echo "SONAR_QUALITYGATE_ENFORCE=${enforceQg} → waitForQualityGate abortPipeline=${enforceQg}"
+          echo "SONAR_QUALITYGATE_ENFORCE=${enforceQg} → abortPipeline=${enforceQg}"
           timeout(time: "${env.SONAR_QUALITYGATE_TIMEOUT_MINUTES}".toInteger(), unit: 'MINUTES') {
             def qg = waitForQualityGate abortPipeline: enforceQg
-            echo "Résultat Quality Gate SonarQube : ${qg.status} (dashboard Sonar pour le détail)"
+            echo "[Sonar] Quality Gate : ${qg.status}"
           }
+        }
+      }
+    }
+
+    stage('CD — préparation Images') {
+      when {
+        expression {
+          return !params.SKIP_CD
+        }
+      }
+      steps {
+        script {
+          def owner = (env.DOCKER_IMAGE_OWNER ?: '').trim()
+          if (!owner) {
+            error(
+              '''[CD] Définissez DOCKER_IMAGE_OWNER (compte/org Docker Hub) sur le job, ou activez SKIP_CD.
+Exemple DOCKER_IMAGE_OWNER=jdoe → jdoe/pismartsite-backend:…'''
+            )
+          }
+          env.IMG_BACKEND = "${owner}/pismartsite-backend:${env.IMAGE_TAG_FULL}"
+          env.IMG_FRONTEND = "${owner}/pismartsite-frontend:${env.IMAGE_TAG_FULL}"
+          env.IMG_AI = "${owner}/pismartsite-ai:${env.IMAGE_TAG_FULL}"
+
+          def feUrl = (env.NEXT_PUBLIC_API_URL_BUILD ?: env.NEXT_PUBLIC_API_URL ?: 'http://127.0.0.1:3200').trim()
+          env.FE_BUILD_API_URL = feUrl
+          echo "[CD] Images : ${IMG_BACKEND} | ${IMG_FRONTEND} | ${IMG_AI}"
+          echo "[CD] NEXT_PUBLIC_API_URL (build front)=${FE_BUILD_API_URL}"
+        }
+      }
+    }
+
+    stage('CD — Docker Hub login') {
+      when {
+        expression { return !params.SKIP_CD }
+      }
+      steps {
+        retry(2) {
+          withCredentials([
+            usernamePassword(
+              credentialsId: env.DOCKER_CREDENTIAL_ID,
+              usernameVariable: 'DOCKER_USER',
+              passwordVariable: 'DOCKER_PASS',
+            ),
+          ]) {
+            sh '''
+              set -e
+              echo "[CD] Connexion registre Docker Hub"
+              echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin docker.io
+            '''
+          }
+        }
+      }
+    }
+
+    stage('CD — Docker build') {
+      when {
+        expression { return !params.SKIP_CD }
+      }
+      options {
+        timeout(time: 90, unit: 'MINUTES')
+      }
+      parallel {
+        stage('Image backend') {
+          steps {
+            sh '''
+              set -e
+              echo "[CD] Docker build backend"
+              docker build -t "$IMG_BACKEND" smartsite-backend
+            '''
+          }
+        }
+
+        stage('Image frontend') {
+          steps {
+            sh '''
+              set -e
+              echo "[CD] Docker build frontend (NEXT_PUBLIC_API_URL=$FE_BUILD_API_URL)"
+              docker build \
+                --build-arg "NEXT_PUBLIC_API_URL=$FE_BUILD_API_URL" \
+                -t "$IMG_FRONTEND" \
+                smarsite-frontend
+            '''
+          }
+        }
+
+        stage('Image IA') {
+          steps {
+            sh '''
+              set -e
+              echo "[CD] Docker build service IA (peut prendre plusieurs minutes — torch)"
+              docker build -t "$IMG_AI" smartsite-ai-service
+            '''
+          }
+        }
+      }
+    }
+
+    stage('CD — Docker push') {
+      when {
+        expression { return !params.SKIP_CD }
+      }
+      steps {
+        sh '''
+          set -e
+          push_retry() {
+            local tries=3
+            local delay=30
+            local i=1
+            while [ "$i" -le "$tries" ]; do
+              if docker push "$1"; then
+                return 0
+              fi
+              echo "[CD] Push échec tentative $i/$tries — nouvelle tentative dans ${delay}s"
+              sleep "$delay"
+              i=$((i + 1))
+            done
+            return 1
+          }
+          echo "[CD] Push images"
+          push_retry "$IMG_BACKEND"
+          push_retry "$IMG_FRONTEND"
+          push_retry "$IMG_AI"
+        '''
+      }
+    }
+
+    stage('CD — Kubernetes apply') {
+      when {
+        expression { return !params.SKIP_CD }
+      }
+      options {
+        timeout(time: 30, unit: 'MINUTES')
+      }
+      steps {
+        withCredentials([
+          file(credentialsId: env.KUBECONFIG_CREDENTIAL_ID, variable: 'KUBECONFIG_FILE'),
+        ]) {
+          sh '''
+            set -e
+            export KUBECONFIG="$KUBECONFIG_FILE"
+            chmod +x scripts/jenkins-k8s-deploy.sh
+            IMG_BACKEND="$IMG_BACKEND" IMG_FRONTEND="$IMG_FRONTEND" IMG_AI="$IMG_AI" \
+              scripts/jenkins-k8s-deploy.sh
+          '''
         }
       }
     }
@@ -271,10 +417,14 @@ Pour bloquer : SONAR_QUALITYGATE_ENFORCE=true sur le job.
       archiveArtifacts artifacts: 'smartsite-backend/coverage/**/*,smarsite-frontend/coverage/**/*,coverage/lcov.info', allowEmptyArchive: true
     }
     success {
-      echo 'PiSmartSite : pipeline OK (tests + analyse SonarQube poussée ; QG peut être ERROR sans faire échouer le build sauf SONAR_QUALITYGATE_ENFORCE=true).'
+      script {
+        echo params.SKIP_CD ?
+          '[Pipeline] Succès : CI et Sonar. CD désactivé (SKIP_CD).' :
+          '[Pipeline] Succès : CI, Sonar, puis CD (Docker push + Kubernetes si credentials configurés).'
+      }
     }
     failure {
-      echo 'CI monorepo : FAILURE — corriger le stage indiqué en erreur.'
+      echo '[Pipeline] FAILURE — examiner le dernier stage en erreur.'
     }
   }
 }

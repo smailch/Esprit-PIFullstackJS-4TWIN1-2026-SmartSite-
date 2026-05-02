@@ -1,0 +1,17 @@
+# DNS interne : http://smartsite-ai:8001 (aligné sur docker-compose)
+apiVersion: v1
+kind: Service
+metadata:
+  name: smartsite-ai
+  labels:
+    app: pismartsite
+    component: ai
+spec:
+  type: ClusterIP
+  selector:
+    app: pismartsite
+    component: ai
+  ports:
+    - port: 8001
+      targetPort: http
+      name: http

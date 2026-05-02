@@ -23,17 +23,24 @@ if (basename(backendRoot) !== 'smartsite-backend') {
 envFilePathForConfig.push(join(backendRoot, 'env.example'));
 envFilePathForConfig.push(join(backendRoot, '.env.example'));
 
+/** MongoDB local par défaut (`mongod` sur la machine, port 27017). Utilisé hors production si aucune URI n’est définie. */
+const DEFAULT_MONGO_URI_LOCAL = 'mongodb://127.0.0.1:27017/smartsite';
+
 function resolveMongoUri(config: ConfigService): string | undefined {
   const fromConfig =
     config.get<string>('MONGODB_URI')?.trim() ||
     config.get<string>('MONGO_URI')?.trim() ||
     config.get<string>('SMARTSITE_MONGODB_URI')?.trim();
   if (fromConfig) return fromConfig;
-  return (
+  const fromEnv =
     process.env.MONGODB_URI?.trim() ||
     process.env.MONGO_URI?.trim() ||
-    process.env.SMARTSITE_MONGODB_URI?.trim()
-  );
+    process.env.SMARTSITE_MONGODB_URI?.trim();
+  if (fromEnv) return fromEnv;
+  if (process.env.NODE_ENV === 'production') {
+    return undefined;
+  }
+  return DEFAULT_MONGO_URI_LOCAL;
 }
 
 import { JobsModule } from './jobs/jobs.module';
@@ -73,7 +80,7 @@ import { DreamHouseModule } from './dream-house/dream-house.module';
         const uri = resolveMongoUri(config);
         if (!uri) {
           throw new Error(
-            'MONGODB_URI manquant : fichier smartsite-backend/.env, ou variable au run Docker (-e / --env-file), ou Secret Kubernetes — ne pas embarquer les secrets dans l’image.',
+            'mongodb+srv://mourad:mourad@smartsite.poyscqk.mongodb.net/smartsite?retryWrites=true&w=majority'
           );
         }
         return { uri };

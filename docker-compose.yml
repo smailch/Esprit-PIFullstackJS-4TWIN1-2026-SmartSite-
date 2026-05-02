@@ -1,0 +1,57 @@
+# PiSmartSite — backend + frontend + service IA (YOLO) + MongoDB
+# Prérequis : Docker Desktop (Linux containers)
+# Démarrage : docker compose up -d --build
+#   • Frontend : http://localhost:3000
+#   • API      : http://localhost:3200
+#   • IA YOLO  : http://localhost:8001/health
+# Optionnel : placer un modèle dans smartsite-ai-service/weights/best.pt (ou detect.pt + YOLO_MODEL_PATH)
+
+name: pismartsite
+
+services:
+  mongodb:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - pismartsite_mongo_data:/data/db
+
+  smartsite-ai:
+    build:
+      context: ./smartsite-ai-service
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      YOLO_MODEL_PATH: /app/weights/best.pt
+    volumes:
+      - ./smartsite-ai-service/weights:/app/weights:ro
+
+  backend:
+    build:
+      context: ./smartsite-backend
+    restart: unless-stopped
+    ports:
+      - "3200:3200"
+    depends_on:
+      - mongodb
+      - smartsite-ai
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017/smartsite
+      AI_ANALYSIS_URL: http://smartsite-ai:8001/analyze-image
+      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+
+  frontend:
+    build:
+      context: ./smarsite-frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3200
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  pismartsite_mongo_data:

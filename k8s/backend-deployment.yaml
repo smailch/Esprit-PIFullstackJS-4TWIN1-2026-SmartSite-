@@ -47,10 +47,11 @@ spec:
             # http://192.168.56.101:30080 — adaptez à l’IP d’un nœud du cluster.
             - name: CORS_ORIGINS
               value: "http://127.0.0.1:3000,http://localhost:3000"
+            # Surcharge depuis le Jenkinsfile CD (NEXT_PUBLIC_* côté front = URL navigateur NodePort backend).
             - name: GROQ_API_KEY
               value: ""
             - name: AI_ANALYSIS_URL
-              value: ""
+              value: "http://smartsite-ai:8001/analyze-image"
           volumeMounts:
             - name: uploads
               mountPath: /app/uploads
