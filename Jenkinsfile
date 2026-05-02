@@ -57,8 +57,10 @@ pipeline {
     /** Compte/org images Docker Hub (surcharge : variable DOCKER_IMAGE_OWNER sur le job Jenkins) */
     DOCKER_IMAGE_OWNER = "${env.DOCKER_IMAGE_OWNER ?: 'missaouimourad'}"
     DOCKER_BUILDKIT = '1'
-    /** Détecte docker installé sous /usr/local/bin (CLI statique Dockerfile.jenkins) */
-    PATH = "/usr/local/bin:${env.PATH}"
+    /**
+     * Ne pas définir PATH ici : en Declarative Pipeline, cette valeur peut être réinjectée à chaque étape sh
+     * et écraser env.PATH mis à jour après le bootstrap (.ci-tools/node). Docker CLI : préfixé dans le stage Bootstrap.
+     */
     /** Surcharge explicite si besoin : /usr/local/bin/docker */
     DOCKER_BIN = "${env.DOCKER_BIN ?: 'docker'}"
   }
@@ -160,12 +162,11 @@ pipeline {
         script {
           def ws = env.WORKSPACE
           /*
-           * Ancienne logique fileExists('.ci-tools/…') peu fiable sous Jenkins (chemins relatifs avec .ci-tools).
-           * Toujours préfixer le PATH après le bootstrap : dossiers créés lors des téléchargements ;
-           * si dossiers absents, les segments vides sont ignorés par la résolution bash.
+           * Préfixer une seule fois sur env.PATH (pas via environment{} racine) pour que les étapes sh suivantes
+           * voient bien node/python ; /usr/local/bin conserve la CLI docker (Dockerfile.jenkins).
            */
-          env.PATH = "${ws}/.ci-tools/python/bin:${ws}/.ci-tools/node/bin:${env.PATH}"
-          echo "[Bootstrap] PATH préfixé .ci-tools (node + python) pour les stages suivants."
+          env.PATH = "${ws}/.ci-tools/python/bin:${ws}/.ci-tools/node/bin:/usr/local/bin:${env.PATH}"
+          echo "[Bootstrap] PATH = .ci-tools python + node + /usr/local/bin + agent (${ws})"
         }
       }
     }
