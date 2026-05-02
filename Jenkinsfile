@@ -11,7 +11,9 @@
  * Credential Jenkins Docker Hub — id défaut dockerhub (surcharge : DOCKER_CREDENTIAL_ID).
  * Credential fichier kubeconfig — id défaut kubeconfig (surcharge : KUBECONFIG_CREDENTIAL_ID).
  *   NEXT_PUBLIC_API_URL_BUILD ou NEXT_PUBLIC_API_URL — URL API vue par le navigateur pour le build front.
- *   SONAR_* — inchangé (voir blocs Quality Gate ci-dessous).
+ *   SONAR_* — inchangé (voir blocs Quality Gate ci‑dessous).
+ * Pas de bloc parameters : pas de SKIP_CD. Si Jenkins propose encore SKIP_CD, désactive
+ *   « Ce projet est paramétrable » dans Configuration du job ou pousse ce Jenkinsfile puis rebuild.
  */
 pipeline {
   agent any
