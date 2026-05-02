@@ -26,7 +26,7 @@
  *      timeout, erreur réseau ou QG Sonar en erreur → le CD s’enchaîne quand même ; le stage peut être UNSTABLE pour visibilité.
  *   SONAR_QUALITYGATE_TIMEOUT_MINUTES — délai max d’attente (défaut 45 ; au‑delà, on coupe et on continue).
  *   SONAR_SKIP_QUALITY_GATE_WAIT=true — pas d appel waitForQualityGate du tout en démo.
- * Pas de bloc parameters : pas de SKIP_CD. Si Jenkins propose encore SKIP_CD, désactive
+ * Prérequis plugin : Workspace Cleanup (« cleanWs » dans le premier stage Checkout).
  *   « Ce projet est paramétrable » dans Configuration du job ou pousse ce Jenkinsfile puis rebuild.
  */
 pipeline {
@@ -60,8 +60,10 @@ pipeline {
 
   stages {
 
+    // cleanWs évite workspaces Git corrompus ; il supprime aussi le cache WORKSPACE/.ci-tools — enlève cette ligne si tu veux la remise du cache téléchargements.
     stage('Checkout') {
       steps {
+        cleanWs()
         checkout scm
         script {
           env.GIT_COMMIT_SHORT = sh(
