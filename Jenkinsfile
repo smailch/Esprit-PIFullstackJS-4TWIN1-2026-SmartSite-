@@ -56,7 +56,11 @@ pipeline {
     KUBECONFIG_CREDENTIAL_ID = "${env.KUBECONFIG_CREDENTIAL_ID ?: 'kubeconfig'}"
     /** Compte/org images Docker Hub (surcharge : variable DOCKER_IMAGE_OWNER sur le job Jenkins) */
     DOCKER_IMAGE_OWNER = "${env.DOCKER_IMAGE_OWNER ?: 'missaouimourad'}"
-    DOCKER_BUILDKIT = '1'
+    /**
+     * Défaut 0 : Dockerfile.jenkins = CLI statique sans docker-buildx (DOCKER_BUILDKIT=1 → erreur buildx).
+     * Sur un agent avec buildx : variable de job DOCKER_BUILDKIT=1.
+     */
+    DOCKER_BUILDKIT = "${env.DOCKER_BUILDKIT ?: '0'}"
     /**
      * Ne pas définir PATH ici : en Declarative Pipeline, cette valeur peut être réinjectée à chaque étape sh
      * et écraser env.PATH mis à jour après le bootstrap (.ci-tools/node). Docker CLI : préfixé dans le stage Bootstrap.
