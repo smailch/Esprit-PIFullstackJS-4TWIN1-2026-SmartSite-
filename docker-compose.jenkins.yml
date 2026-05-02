@@ -2,9 +2,12 @@
 #
 # Prérequis : Docker Desktop démarré (ou moteur Docker sur Linux).
 #
-# Démarche :
-#   docker compose -f docker-compose.jenkins.yml build --no-cache
+# Démarche (depuis CE dossier, avec le fichier compose ci-dessous) :
+#   docker compose -f docker-compose.jenkins.yml down
+#   docker compose -f docker-compose.jenkins.yml build --no-cache --pull jenkins
 #   docker compose -f docker-compose.jenkins.yml up -d
+# Vérifier l’image : docker image inspect pismartsite-jenkins:with-docker-cli
+# Tester : docker exec -it pismartsite-jenkins /usr/local/bin/docker version
 #
 # Interface : http://localhost:8080
 # Premier démarrage : mot de passe admin dans les logs :
@@ -13,7 +16,16 @@
 # Docker dans le pipeline : le conteneur monte docker.sock pour utiliser le MÊME moteur
 # que Docker Desktop (pas de Docker-in-Docker). La CLI docker est incluse dans l’image buildée.
 #
-# Si « permission denied » sur docker.sock : relance après
+# « permission denied » sur /var/run/docker.sock : le GID du socket hôte ≠ groupe « docker »
+# du conteneur. Deux options :
+#   A) Démo (ci-dessous) : user root dans le conteneur — le plus simple sous Docker Desktop.
+#   B) Plus propre : récupérer le GID du socket puis group_add (voir bloc commenté).
+#
+# GID du socket (à lancer une fois) :
+#   docker run --rm -v /var/run/docker.sock:/var/run/docker.sock alpine stat -c %g /var/run/docker.sock
+# Créer un fichier .env à côté de ce compose avec : DOCKER_SOCK_GID=<valeur>
+#
+# Si échec persistant sur docker.sock : relance après
 #   docker compose ... down && docker compose ... up --build
 
 services:
@@ -21,7 +33,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.jenkins
+    image: pismartsite-jenkins:with-docker-cli
     container_name: pismartsite-jenkins
+    # Démo Docker Desktop : root → accès au socket sans caler les GID (éviter en prod).
+    user: "0:0"
+    # Alternative sans root : définir DOCKER_SOCK_GID dans .env puis commenter user: "0:0"
+    # group_add:
+    #   - "${DOCKER_SOCK_GID}"
     ports:
       - "8080:8080"
       - "50000:50000"
@@ -30,8 +48,6 @@ services:
       # Socket du moteur Docker (fonctionne avec Docker Desktop en mode Linux containers)
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
-    # Si échec persistant sur docker.sock sous Windows, tester temporairement (démo seulement) :
-    # user: "0:0"
 
 volumes:
   jenkins_home:

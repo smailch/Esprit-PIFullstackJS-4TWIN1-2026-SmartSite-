@@ -1,12 +1,28 @@
-# Jenkins LTS + client Docker pour parler au moteur via docker.sock (Docker Desktop ou Linux).
+# CLI Docker officielle (binaire statique) → toujours /usr/local/bin/docker, peu importe Debian/apt.
+# Conçu pour docker.sock monté depuis Docker Desktop (Linux containers) ou hôte Linux.
 FROM jenkins/jenkins:lts-jdk21
 
 USER root
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends docker.io \
-    && rm -rf /var/lib/apt/lists/*
 
-# Accès au socket monté depuis l’hôte (groupe docker du conteneur ≈ souvent aligné avec Desktop)
-RUN usermod -aG docker jenkins
+ARG DOCKER_CLI_VERSION=27.3.1
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && ARCH=$(dpkg --print-architecture) \
+    && case "$ARCH" in \
+        amd64) DARCH=x86_64 ;; \
+        arm64) DARCH=aarch64 ;; \
+        *) echo "Arch non supportee: $ARCH" && exit 1 ;; \
+      esac \
+    && curl -fsSL "https://download.docker.com/linux/static/stable/${DARCH}/docker-${DOCKER_CLI_VERSION}.tgz" -o /tmp/d.tgz \
+    && tar -xzf /tmp/d.tgz -C /tmp \
+    && mv /tmp/docker/docker /usr/local/bin/docker \
+    && chmod +x /usr/local/bin/docker \
+    && rm -rf /tmp/docker /tmp/d.tgz \
+    && /usr/local/bin/docker --version \
+    && ln -sf /usr/local/bin/docker /usr/bin/docker \
+    && (getent group docker >/dev/null || groupadd -r docker) \
+    && usermod -aG docker jenkins
 
 USER jenkins

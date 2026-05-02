@@ -6,8 +6,11 @@
  *   2) Sonar : fusion LCOV → scan → Quality Gate (comportement existant préservé)
  *   3) CD : build/push Docker Hub puis déploiement Kubernetes (succès CI+Sonar requis avant CD)
  *
- * CD Docker — prérequis agent : CLI « docker » dans le PATH et accès au démon Docker
- * (ex. conteneur Jenkins avec montage /var/run/docker.sock + paquet docker.io ou docker-ce-cli).
+ * CD Docker — prérequis agent :
+ *   • CLI docker dans le PATH (ex. `/usr/local/bin/docker` depuis Dockerfile.jenkins) et accès au démon Docker.
+ *   • Démo Docker Desktop : `docker-compose.jenkins.yml` (socket `docker.sock`) + image `Dockerfile.jenkins` ;
+ *     Compose utilise `user: "0:0"` pour éviter « permission denied » sur le socket hôte ; `docker compose ... build && up`.
+ *   Variable optionnelle de job DOCKER_BIN (ex. /usr/local/bin/docker) pour forcer le binaire si PATH insuffisant.
  * Variables obligatoires pour le CD (après Sonar) :
  *   DOCKER_IMAGE_OWNER — utilisateur/org Docker Hub (défaut pipeline : missaouimourad ; surchargeable sur le job).
  * Credential Docker Hub (pipeline attend un identifiant Jenkins précis) :
@@ -49,6 +52,10 @@ pipeline {
     /** Compte/org images Docker Hub (surcharge : variable DOCKER_IMAGE_OWNER sur le job Jenkins) */
     DOCKER_IMAGE_OWNER = "${env.DOCKER_IMAGE_OWNER ?: 'missaouimourad'}"
     DOCKER_BUILDKIT = '1'
+    /** Détecte docker installé sous /usr/local/bin (CLI statique Dockerfile.jenkins) */
+    PATH = "/usr/local/bin:${env.PATH}"
+    /** Surcharge explicite si besoin : /usr/local/bin/docker */
+    DOCKER_BIN = "${env.DOCKER_BIN ?: 'docker'}"
   }
 
   stages {
@@ -279,16 +286,13 @@ Exemple DOCKER_IMAGE_OWNER=jdoe → jdoe/pismartsite-backend:…'''
         echo "[CD] Credential Jenkins (Username/password) : credentialsId='${env.DOCKER_CREDENTIAL_ID}'. Si erreur « Could not find credentials », créez cet ID ou surchargez DOCKER_CREDENTIAL_ID sur le job."
         sh '''
           set -e
-          if ! command -v docker >/dev/null 2>&1; then
-            echo "[CD] ERREUR: commande docker introuvable sur cet agent (PATH)."
-            echo "     Installez le client Docker sur la même machine qui exécute le job, ou"
-            echo "     si Jenkins tourne dans un conteneur: montez le socket hôte ET installez docker-cli dans le conteneur,"
-            echo "     ou rattachez le job à un agent (label) où docker est disponible."
+          if ! command -v "$DOCKER_BIN" >/dev/null 2>&1; then
+            echo "[CD] ERREUR: commande docker introuvable (DOCKER_BIN=$DOCKER_BIN, PATH=$PATH)."
+            echo "     Voir docker-compose.jenkins.yml + Dockerfile.jenkins (CLI + socket) ou installez Docker sur l agent."
             exit 127
           fi
-          docker info >/dev/null 2>&1 || {
-            echo "[CD] ERREUR: docker est présent mais ne parle pas au démon Docker (docker info échoue)."
-            echo "     Vérifiez docker.sock (Linux) ou que le service Docker est démarré sur l'hôte agent."
+          "$DOCKER_BIN" info >/dev/null 2>&1 || {
+            echo "[CD] ERREUR: $DOCKER_BIN ne parle pas au démon (info échoue). Vérifiez docker.sock et droits (ex. user root sur le conteneur Jenkins)."
             exit 1
           }
         '''
@@ -303,7 +307,7 @@ Exemple DOCKER_IMAGE_OWNER=jdoe → jdoe/pismartsite-backend:…'''
             sh '''
               set -e
               echo "[CD] Connexion registre Docker Hub"
-              echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin docker.io
+              echo "$DOCKER_PASS" | "$DOCKER_BIN" login -u "$DOCKER_USER" --password-stdin docker.io
             '''
           }
         }
@@ -320,7 +324,7 @@ Exemple DOCKER_IMAGE_OWNER=jdoe → jdoe/pismartsite-backend:…'''
             sh '''
               set -e
               echo "[CD] Docker build backend"
-              docker build -t "$IMG_BACKEND" smartsite-backend
+              "$DOCKER_BIN" build -t "$IMG_BACKEND" smartsite-backend
             '''
           }
         }
@@ -330,7 +334,7 @@ Exemple DOCKER_IMAGE_OWNER=jdoe → jdoe/pismartsite-backend:…'''
             sh '''
               set -e
               echo "[CD] Docker build frontend (NEXT_PUBLIC_API_URL=$FE_BUILD_API_URL)"
-              docker build \
+              "$DOCKER_BIN" build \
                 --build-arg "NEXT_PUBLIC_API_URL=$FE_BUILD_API_URL" \
                 -t "$IMG_FRONTEND" \
                 smarsite-frontend
@@ -343,7 +347,7 @@ Exemple DOCKER_IMAGE_OWNER=jdoe → jdoe/pismartsite-backend:…'''
             sh '''
               set -e
               echo "[CD] Docker build service IA (peut prendre plusieurs minutes — torch)"
-              docker build -t "$IMG_AI" smartsite-ai-service
+              "$DOCKER_BIN" build -t "$IMG_AI" smartsite-ai-service
             '''
           }
         }
@@ -359,7 +363,7 @@ Exemple DOCKER_IMAGE_OWNER=jdoe → jdoe/pismartsite-backend:…'''
             local delay=30
             local i=1
             while [ "$i" -le "$tries" ]; do
-              if docker push "$1"; then
+              if "$DOCKER_BIN" push "$1"; then
                 return 0
               fi
               echo "[CD] Push échec tentative $i/$tries — nouvelle tentative dans ${delay}s"
