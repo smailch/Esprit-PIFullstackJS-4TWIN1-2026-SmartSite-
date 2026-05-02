@@ -281,7 +281,7 @@ Exemple DOCKER_IMAGE_OWNER=jdoe → jdoe/pismartsite-backend:…'''
           }
           env.IMG_BACKEND = "${owner}/pismartsite-backend:${env.IMAGE_TAG_FULL}"
           env.IMG_FRONTEND = "${owner}/pismartsite-frontend:${env.IMAGE_TAG_FULL}"
-          env.IMG_AI = "${owner}/pismartsite-ai:${env.IMAGE_TAG_FULL}"
+          env.IMG_AI = "${owner}/pismartsite-ai:latest"
 
           def feUrl = (env.NEXT_PUBLIC_API_URL_BUILD ?: env.NEXT_PUBLIC_API_URL ?: 'http://127.0.0.1:3200').trim()
           env.FE_BUILD_API_URL = feUrl
@@ -351,16 +351,6 @@ Exemple DOCKER_IMAGE_OWNER=jdoe → jdoe/pismartsite-backend:…'''
             '''
           }
         }
-
-        stage('Image IA') {
-          steps {
-            sh '''
-              set -e
-              echo "[CD] Docker build service IA (peut prendre plusieurs minutes — torch)"
-              "$DOCKER_BIN" build -t "$IMG_AI" smartsite-ai-service
-            '''
-          }
-        }
       }
     }
 
@@ -385,7 +375,6 @@ Exemple DOCKER_IMAGE_OWNER=jdoe → jdoe/pismartsite-backend:…'''
           echo "[CD] Push images"
           push_retry "$IMG_BACKEND"
           push_retry "$IMG_FRONTEND"
-          push_retry "$IMG_AI"
         '''
       }
     }
