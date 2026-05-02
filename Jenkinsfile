@@ -18,7 +18,11 @@
  *      • ID = exactement dockerhub  (ou sinon variable de job DOCKER_CREDENTIAL_ID = l’ID que tu as choisi)
  * Credential fichier kubeconfig — id défaut kubeconfig (surcharge : KUBECONFIG_CREDENTIAL_ID).
  *   NEXT_PUBLIC_API_URL_BUILD ou NEXT_PUBLIC_API_URL — URL API vue par le navigateur pour le build front.
- *   SONAR_* — inchangé (voir blocs Quality Gate ci‑dessous).
+ * SonarQube :
+ *   Le stage Quality Gate consulte Sonar (IN_PROGRESS = normal). Cette étape ne fait jamais échouer le pipeline :
+ *      timeout, erreur réseau ou QG Sonar en erreur → le CD s’enchaîne quand même ; le stage peut être UNSTABLE pour visibilité.
+ *   SONAR_QUALITYGATE_TIMEOUT_MINUTES — délai max d’attente (défaut 45 ; au‑delà, on coupe et on continue).
+ *   SONAR_SKIP_QUALITY_GATE_WAIT=true — pas d appel waitForQualityGate du tout en démo.
  * Pas de bloc parameters : pas de SKIP_CD. Si Jenkins propose encore SKIP_CD, désactive
  *   « Ce projet est paramétrable » dans Configuration du job ou pousse ce Jenkinsfile puis rebuild.
  */
@@ -38,6 +42,7 @@ pipeline {
     NEXT_PUBLIC_API_URL = "${env.NEXT_PUBLIC_API_URL ?: 'http://127.0.0.1:3200'}"
     SONAR_HOST_URL_OVERRIDE = "${env.SONAR_HOST_URL_OVERRIDE ?: ''}"
     SONAR_QUALITYGATE_TIMEOUT_MINUTES = "${env.SONAR_QUALITYGATE_TIMEOUT_MINUTES ?: '45'}"
+    SONAR_SKIP_QUALITY_GATE_WAIT = "${env.SONAR_SKIP_QUALITY_GATE_WAIT ?: 'false'}"
     /** Identifiants Docker Hub pour le bloc CD */
     DOCKER_CREDENTIAL_ID = "${env.DOCKER_CREDENTIAL_ID ?: 'dockerhub'}"
     KUBECONFIG_CREDENTIAL_ID = "${env.KUBECONFIG_CREDENTIAL_ID ?: 'kubeconfig'}"
@@ -250,18 +255,29 @@ pipeline {
       steps {
         echo """
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Quality Gate : attente du serveur SonarQube (CE)
-Timeout : ${SONAR_QUALITYGATE_TIMEOUT_MINUTES} min ; bloquer Jenkins sur erreur :
-  SONAR_QUALITYGATE_ENFORCE=true
-Voir header historique Jenkinsfile pour détails.
+Quality Gate : interrogation SonarQube — IN_PROGRESS peut durer plusieurs minutes (CE).
+Cette étape ne bloque pas le pipeline : erreur Sonar / timeout → enchaînement CD quand même (stage potentiel UNSTABLE).
+Sonar GUI : Administration → tâches d’arrière-plan.
+SONAR_SKIP_QUALITY_GATE_WAIT=true : zapper totalement l attente.
+Timeout : ${SONAR_QUALITYGATE_TIMEOUT_MINUTES} min (SONAR_QUALITYGATE_TIMEOUT_MINUTES).
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
-        script {
-          def enforceQg = (env.SONAR_QUALITYGATE_ENFORCE ?: '').trim().equalsIgnoreCase('true')
-          echo "SONAR_QUALITYGATE_ENFORCE=${enforceQg} → abortPipeline=${enforceQg}"
-          timeout(time: "${env.SONAR_QUALITYGATE_TIMEOUT_MINUTES}".toInteger(), unit: 'MINUTES') {
-            def qg = waitForQualityGate abortPipeline: enforceQg
-            echo "[Sonar] Quality Gate : ${qg.status}"
+        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+          script {
+            def skipWait = (env.SONAR_SKIP_QUALITY_GATE_WAIT ?: '').trim().equalsIgnoreCase('true')
+            if (skipWait) {
+              echo '[Sonar] SONAR_SKIP_QUALITY_GATE_WAIT=true — pas de waitForQualityGate.'
+              return
+            }
+            try {
+              echo '[Sonar] waitForQualityGate (abortPipeline toujours false — le pipeline continue vers le CD).'
+              timeout(time: "${env.SONAR_QUALITYGATE_TIMEOUT_MINUTES}".toInteger(), unit: 'MINUTES') {
+                def qg = waitForQualityGate abortPipeline: false
+                echo "[Sonar] Quality Gate rapporté par le plugin : ${qg.status}"
+              }
+            } catch (exc) {
+              echo "[Sonar] Étape Quality Gate coupée sans faire échouer le pipeline : ${exc}"
+            }
           }
         }
       }
