@@ -27,6 +27,8 @@
  *   SONAR_QUALITYGATE_TIMEOUT_MINUTES — délai max d’attente (défaut 45 ; au‑delà, on coupe et on continue).
  *   SONAR_SKIP_QUALITY_GATE_WAIT=true — pas d appel waitForQualityGate du tout en démo.
  * Prérequis plugin : Workspace Cleanup (« cleanWs » dans le premier stage Checkout).
+ * options.skipDefaultCheckout(true) évite un double checkout (erreur « not in a git directory » dans
+ *   « Declarative: Checkout SCM » puis workspace déjà incomplet avant cleanWs).
  * Pas de bloc parameters : pas de SKIP_CD. Si Jenkins propose encore SKIP_CD, désactive
  *   « Ce projet est paramétrable » dans Configuration du job ou pousse ce Jenkinsfile puis rebuild.
  */
@@ -37,6 +39,8 @@ pipeline {
     timestamps()
     buildDiscarder(logRotator(numToKeepStr: '20'))
     timeout(time: 4, unit: 'HOURS')
+    /** Un seul checkout explicite au stage Checkout (après cleanWs), pas avant. */
+    skipDefaultCheckout(true)
   }
 
   environment {
@@ -405,8 +409,14 @@ Exemple DOCKER_IMAGE_OWNER=jdoe → jdoe/pismartsite-backend:…'''
 
   post {
     always {
-      junit testResults: 'reports/junit/**/*.xml', allowEmptyResults: true
-      archiveArtifacts artifacts: 'smartsite-backend/coverage/**/*,smarsite-frontend/coverage/**/*,coverage/lcov.info', allowEmptyArchive: true
+      script {
+        try {
+          junit testResults: 'reports/junit/**/*.xml', allowEmptyResults: true
+          archiveArtifacts artifacts: 'smartsite-backend/coverage/**/*,smarsite-frontend/coverage/**/*,coverage/lcov.info', allowEmptyArchive: true
+        } catch (Throwable e) {
+          echo "[Pipeline] Artefacts junit/archivage sautés (souvent échec checkout ou pas de workspace) : ${e.message}"
+        }
+      }
     }
     success {
       echo '[Pipeline] Succès : CI + Sonar + CD (Docker Hub + Kubernetes).'
