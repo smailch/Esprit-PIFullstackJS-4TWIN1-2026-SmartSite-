@@ -80,7 +80,7 @@ import { DreamHouseModule } from './dream-house/dream-house.module';
         const uri = resolveMongoUri(config);
         if (!uri) {
           throw new Error(
-            'mongodb+srv://mourad:mourad@smartsite.poyscqk.mongodb.net/smartsite?retryWrites=true&w=majority'
+            'MongoDB URI is required in production. Set MONGODB_URI, MONGO_URI or SMARTSITE_MONGODB_URI (e.g. docker run -e MONGODB_URI="mongodb+srv://...").'
           );
         }
         return { uri };

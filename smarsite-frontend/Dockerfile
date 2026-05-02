@@ -18,6 +18,10 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 COPY --from=build /app/.next ./.next
 COPY --from=build /app/public ./public
+# Next doit pouvoir créer `.next/cache/*` avec `USER node` (après COPY, les fichiers appartiennent à root).
+RUN chown -R node:node /app/.next /app/public
 EXPOSE 3000
 USER node
+# SSR / route handlers : définir au run INTERNAL_API_URL (ex. compose : http://backend:3200 ou
+# hors compose : `-e INTERNAL_API_URL=http://host.docker.internal:3200`). NEXT_PUBLIC_* = ce que voit le navigateur.
 CMD ["npx", "next", "start", "-H", "0.0.0.0", "-p", "3000"]

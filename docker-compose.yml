@@ -52,6 +52,9 @@ services:
       - "3000:3000"
     depends_on:
       - backend
+    environment:
+      # Résolu par Docker DNS : le serveur Next ne doit pas utiliser localhost:3200 (ce serait lui-même dans le conteneur).
+      INTERNAL_API_URL: http://backend:3200
 
 volumes:
   pismartsite_mongo_data:

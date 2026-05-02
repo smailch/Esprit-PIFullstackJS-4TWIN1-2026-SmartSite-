@@ -96,6 +96,9 @@ spec:
           env:
             - name: NODE_ENV
               value: production
+            # Next SSR → API cluster (distinct de NEXT_PUBLIC_* pour le navigateur, injecté au build).
+            - name: INTERNAL_API_URL
+              value: "http://backend:3200"
           readinessProbe:
             httpGet:
               path: /
