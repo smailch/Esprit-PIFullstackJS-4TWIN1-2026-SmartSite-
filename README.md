@@ -81,6 +81,12 @@ PiSmartSite/
 - AI service: `YOLO_MODEL_PATH`
 - Backend to AI bridge: `AI_ANALYSIS_URL`
 
+## Dream House 3D (WIP)
+
+- Dedicated concept track for immersive Dream House 3D exploration.
+- Goal: a simple interactive navigation experience for stakeholder previews.
+- Current scope: documentation and quality benchmark preparation.
+
 ## Getting Started
 
 Frontend and backend are split into separate folders, so you can run each service independently.
@@ -145,41 +151,56 @@ Best practices:
 - Group: 4TWIN1
 - Academic Year: 2025-2026
 
-## AI Usage & Contribution
+## AI Usage
 
-All AI interactions were performed using Large Language Models (LLMs) and AI coding agents.
+This project integrated AI tools to assist with development, debugging, documentation, testing, and Git operations.
 
-Tools used:
+### ✅ AI Tools Used
 
-- GitHub Copilot
-- Large Language Models (LLMs)
+- **GitHub Copilot** (Agent code)
+- **Cursor AI** (Agent code)
+- **ChatGPT** (OpenAI)
+- **Claude** (Anthropic) — Agent code
+- **DeepSeek** (architecture & logic analysis)
+- **Canva AI** (report/presentation layout)
 
-AI-assisted tasks:
+### ✅ How AI Was Used
 
-- Documentation restructuring and cleanup
-- README formatting and section renaming
-- Visual badge and header tuning for GitHub rendering
-- Consistency review of paths, commands, and wording
+- **Code generation:** components, DTOs, CRUD endpoints, UI helpers
+- **Debugging:** NestJS runtime errors, React rendering issues, API failures
+- **Documentation:** README sections, setup guides, architecture notes
+- **Testing:** test case ideas and edge-case coverage
+- **Architecture & logic:** module boundaries, flows, and service interactions
+- **Git commands:** commit guidance and workflow suggestions
+- **Reporting:** Canva AI for academic report and slides design
 
-LLMs and agents:
+### ✅ Prompts (Examples)
 
-- LLM: GPT-5.4 mini
-- Agent: GitHub Copilot AI coding agent
+- “Generate a NestJS module for project CRUD with Mongoose schema.”
+- “Create a Next.js page with a Kanban board using Tailwind.”
+- “Explain why this React hook causes re-render loops.”
+- “Draft a README section for environment setup.”
+- “Suggest edge cases for task scheduling with Gantt dependencies.”
+- “Summarize backend architecture for an academic report.”
 
-### Prompts Used (Examples)
+### ✅ LLMs & Agents
 
-- "Rewrite the README for a cleaner academic presentation."
-- "Simplify the architecture section and remove redundant wording."
-- "Update the GitHub badge layout for a more centered visual balance."
+- **GitHub Copilot Agent** — code, debugging, documentation, testing, git commands
+- **Cursor AI Agent** — code, debugging, documentation, testing, git commands
+- **Claude Agent** — code, debugging, documentation, testing, git commands
+- **ChatGPT** — architecture & documentation
+- **DeepSeek** — architecture & system logic
 
-## Acknowledgments
+### ✅ Canva AI Report
 
-Special thanks to our supervisor Sassi Soumaya for her guidance and support, and to the teaching team at Esprit School of Engineering.
+Canva AI was used to generate the **layout and visuals** for the final academic report and presentation.
 
-## Dream House 3D (WIP)
+## Acknowledgment
 
-- Dedicated concept track for immersive Dream House 3D exploration.
-- Goal: a simple interactive navigation experience for stakeholder previews.
-- Current scope: documentation and quality benchmark preparation.
+<p align="center">
+  <strong>🙏 Special thanks to our supervisor, Sassi Soumaya</strong><br/>
+  for her guidance, support, and valuable feedback throughout this project.
+</p>
+
 
 <p align="center">⭐ <em>SmartSite - PI Full Stack JavaScript Program - ESPRIT</em></p>
