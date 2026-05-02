@@ -6,9 +6,16 @@
  *   2) Sonar : fusion LCOV → scan → Quality Gate (comportement existant préservé)
  *   3) CD : build/push Docker Hub puis déploiement Kubernetes (succès CI+Sonar requis avant CD)
  *
+ * CD Docker — prérequis agent : CLI « docker » dans le PATH et accès au démon Docker
+ * (ex. conteneur Jenkins avec montage /var/run/docker.sock + paquet docker.io ou docker-ce-cli).
  * Variables obligatoires pour le CD (après Sonar) :
  *   DOCKER_IMAGE_OWNER — utilisateur/org Docker Hub (défaut pipeline : missaouimourad ; surchargeable sur le job).
- * Credential Jenkins Docker Hub — id défaut dockerhub (surcharge : DOCKER_CREDENTIAL_ID).
+ * Credential Docker Hub (pipeline attend un identifiant Jenkins précis) :
+ *   1) Jenkins → Manage Credentials → portée adaptée (global ou dossier du job)
+ *   2) Add Credentials → « Username with password »
+ *      • Username = ton identifiant Docker Hub (ex. missaouimourad)
+ *      • Password = Access Token Docker Hub (pas le mot de passe du compte si 2FA)
+ *      • ID = exactement dockerhub  (ou sinon variable de job DOCKER_CREDENTIAL_ID = l’ID que tu as choisi)
  * Credential fichier kubeconfig — id défaut kubeconfig (surcharge : KUBECONFIG_CREDENTIAL_ID).
  *   NEXT_PUBLIC_API_URL_BUILD ou NEXT_PUBLIC_API_URL — URL API vue par le navigateur pour le build front.
  *   SONAR_* — inchangé (voir blocs Quality Gate ci‑dessous).
@@ -284,6 +291,22 @@ Exemple DOCKER_IMAGE_OWNER=jdoe → jdoe/pismartsite-backend:…'''
 
     stage('CD — Docker Hub login') {
       steps {
+        echo "[CD] Credential Jenkins (Username/password) : credentialsId='${env.DOCKER_CREDENTIAL_ID}'. Si erreur « Could not find credentials », créez cet ID ou surchargez DOCKER_CREDENTIAL_ID sur le job."
+        sh '''
+          set -e
+          if ! command -v docker >/dev/null 2>&1; then
+            echo "[CD] ERREUR: commande docker introuvable sur cet agent (PATH)."
+            echo "     Installez le client Docker sur la même machine qui exécute le job, ou"
+            echo "     si Jenkins tourne dans un conteneur: montez le socket hôte ET installez docker-cli dans le conteneur,"
+            echo "     ou rattachez le job à un agent (label) où docker est disponible."
+            exit 127
+          fi
+          docker info >/dev/null 2>&1 || {
+            echo "[CD] ERREUR: docker est présent mais ne parle pas au démon Docker (docker info échoue)."
+            echo "     Vérifiez docker.sock (Linux) ou que le service Docker est démarré sur l'hôte agent."
+            exit 1
+          }
+        '''
         retry(2) {
           withCredentials([
             usernamePassword(
