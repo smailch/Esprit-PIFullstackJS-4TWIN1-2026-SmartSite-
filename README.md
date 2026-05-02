@@ -1,4 +1,4 @@
-<h1 align="center">PiSmartSite</h1>
+<h1 align="center">SmartSite</h1>
 
 <p align="center" style="margin: 15px;">
   <img src="https://readme-typing-svg.herokuapp.com?duration=2000&color=0EA5E9&center=true&vCenter=true&width=600&lines=Construction+project+management;Project+planning+%26+task+tracking;Documents+%26+progress+photos;Optional+AI+assistance" alt="Typing SVG" />
@@ -19,7 +19,7 @@
 
 ## Overview
 
-PiSmartSite is a web platform for managing construction projects end to end.
+SmartSite is a web platform for managing construction projects end to end.
 It covers planning, tasks, resources, budget tracking, documents, progress photos, reporting, and optional AI assistance.
 
 ## Features
@@ -182,4 +182,4 @@ Special thanks to our supervisor Sassi Soumaya for her guidance and support, and
 - Goal: a simple interactive navigation experience for stakeholder previews.
 - Current scope: documentation and quality benchmark preparation.
 
-<p align="center">⭐ <em>PiSmartSite - PI Full Stack JavaScript Program - ESPRIT</em></p>
+<p align="center">⭐ <em>SmartSite - PI Full Stack JavaScript Program - ESPRIT</em></p>
