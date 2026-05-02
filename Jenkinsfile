@@ -6,13 +6,11 @@
  *   2) Sonar : fusion LCOV → scan → Quality Gate (comportement existant préservé)
  *   3) CD : build/push Docker Hub puis déploiement Kubernetes (succès CI+Sonar requis avant CD)
  *
- * Variables utiles :
- *   SKIP_CD=true — n’exécute pas Docker/K8s (CI + Sonar seuls).
- *   DOCKER_IMAGE_OWNER — compte ou org Docker Hub (ex. jdoe).
- *   DOCKER_CREDENTIAL_ID — credential Jenkins « Username with password » (défaut : dockerhub).
- *   NEXT_PUBLIC_API_URL_BUILD — URL API pour le navigateur utilisée au build du front NodePort/Ingress ;
- *                               si vide : reprise NEXT_PUBLIC_API_URL du job puis défaut local.
- *   KUBECONFIG_CREDENTIAL_ID — credential « Secret file » kubeconfig (défaut : kubeconfig).
+ * Variables obligatoires pour le CD (après Sonar) :
+ *   DOCKER_IMAGE_OWNER — utilisateur/org Docker Hub (défaut pipeline : missaouimourad ; surchargeable sur le job).
+ * Credential Jenkins Docker Hub — id défaut dockerhub (surcharge : DOCKER_CREDENTIAL_ID).
+ * Credential fichier kubeconfig — id défaut kubeconfig (surcharge : KUBECONFIG_CREDENTIAL_ID).
+ *   NEXT_PUBLIC_API_URL_BUILD ou NEXT_PUBLIC_API_URL — URL API vue par le navigateur pour le build front.
  *   SONAR_* — inchangé (voir blocs Quality Gate ci-dessous).
  */
 pipeline {
@@ -24,14 +22,6 @@ pipeline {
     timeout(time: 4, unit: 'HOURS')
   }
 
-  parameters {
-    booleanParam(
-      name: 'SKIP_CD',
-      defaultValue: false,
-      description: 'Cocher pour ne faire que CI + Sonar (pas Docker/Kubernetes).'
-    )
-  }
-
   environment {
     CI = 'true'
     HUSKY = '0'
@@ -39,9 +29,11 @@ pipeline {
     NEXT_PUBLIC_API_URL = "${env.NEXT_PUBLIC_API_URL ?: 'http://127.0.0.1:3200'}"
     SONAR_HOST_URL_OVERRIDE = "${env.SONAR_HOST_URL_OVERRIDE ?: ''}"
     SONAR_QUALITYGATE_TIMEOUT_MINUTES = "${env.SONAR_QUALITYGATE_TIMEOUT_MINUTES ?: '45'}"
-    /** Identifiants optionnels Docker Hub pour le bloc CD */
+    /** Identifiants Docker Hub pour le bloc CD */
     DOCKER_CREDENTIAL_ID = "${env.DOCKER_CREDENTIAL_ID ?: 'dockerhub'}"
     KUBECONFIG_CREDENTIAL_ID = "${env.KUBECONFIG_CREDENTIAL_ID ?: 'kubeconfig'}"
+    /** Compte/org images Docker Hub (surcharge : variable DOCKER_IMAGE_OWNER sur le job Jenkins) */
+    DOCKER_IMAGE_OWNER = "${env.DOCKER_IMAGE_OWNER ?: 'missaouimourad'}"
     DOCKER_BUILDKIT = '1'
   }
 
@@ -267,17 +259,12 @@ Voir header historique Jenkinsfile pour détails.
     }
 
     stage('CD — préparation Images') {
-      when {
-        expression {
-          return !params.SKIP_CD
-        }
-      }
       steps {
         script {
           def owner = (env.DOCKER_IMAGE_OWNER ?: '').trim()
           if (!owner) {
             error(
-              '''[CD] Définissez DOCKER_IMAGE_OWNER (compte/org Docker Hub) sur le job, ou activez SKIP_CD.
+              '''[CD] Variable de job DOCKER_IMAGE_OWNER obligatoire pour ce pipeline (CD non optionnel).
 Exemple DOCKER_IMAGE_OWNER=jdoe → jdoe/pismartsite-backend:…'''
             )
           }
@@ -294,9 +281,6 @@ Exemple DOCKER_IMAGE_OWNER=jdoe → jdoe/pismartsite-backend:…'''
     }
 
     stage('CD — Docker Hub login') {
-      when {
-        expression { return !params.SKIP_CD }
-      }
       steps {
         retry(2) {
           withCredentials([
@@ -317,9 +301,6 @@ Exemple DOCKER_IMAGE_OWNER=jdoe → jdoe/pismartsite-backend:…'''
     }
 
     stage('CD — Docker build') {
-      when {
-        expression { return !params.SKIP_CD }
-      }
       options {
         timeout(time: 90, unit: 'MINUTES')
       }
@@ -360,9 +341,6 @@ Exemple DOCKER_IMAGE_OWNER=jdoe → jdoe/pismartsite-backend:…'''
     }
 
     stage('CD — Docker push') {
-      when {
-        expression { return !params.SKIP_CD }
-      }
       steps {
         sh '''
           set -e
@@ -389,9 +367,6 @@ Exemple DOCKER_IMAGE_OWNER=jdoe → jdoe/pismartsite-backend:…'''
     }
 
     stage('CD — Kubernetes apply') {
-      when {
-        expression { return !params.SKIP_CD }
-      }
       options {
         timeout(time: 30, unit: 'MINUTES')
       }
@@ -417,11 +392,7 @@ Exemple DOCKER_IMAGE_OWNER=jdoe → jdoe/pismartsite-backend:…'''
       archiveArtifacts artifacts: 'smartsite-backend/coverage/**/*,smarsite-frontend/coverage/**/*,coverage/lcov.info', allowEmptyArchive: true
     }
     success {
-      script {
-        echo params.SKIP_CD ?
-          '[Pipeline] Succès : CI et Sonar. CD désactivé (SKIP_CD).' :
-          '[Pipeline] Succès : CI, Sonar, puis CD (Docker push + Kubernetes si credentials configurés).'
-      }
+      echo '[Pipeline] Succès : CI + Sonar + CD (Docker Hub + Kubernetes).'
     }
     failure {
       echo '[Pipeline] FAILURE — examiner le dernier stage en erreur.'
