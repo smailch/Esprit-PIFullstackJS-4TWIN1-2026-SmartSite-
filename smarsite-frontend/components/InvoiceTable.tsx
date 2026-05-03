@@ -43,6 +43,7 @@ import { Input } from "@/components/ui/input";
 import PaymentModal from "./PaymentModal";
 import EditInvoiceModal from "./EditInvoiceModal";
 import { cn } from "@/lib/utils";
+import { getApiBaseUrl } from "@/lib/api";
 
 type Invoice = {
   _id: string;
@@ -131,7 +132,7 @@ export default function InvoiceTable({ invoices = [], onRefresh }: any) {
 
     try {
       const res = await fetch(
-        `http://localhost:3200/invoices/${deleteTarget._id}`,
+        `${getApiBaseUrl()}/invoices/${deleteTarget._id}`,
         { method: "DELETE" }
       );
 

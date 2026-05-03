@@ -1,6 +1,10 @@
-# Deployments applicatifs (backend NestJS + frontend Next.js + IA YOLO).
-# À appliquer avec substitution d’images (voir scripts/jenkins-k8s-deploy.sh) ou après
-# `docker load …` avec les tags localement : pismartsite-*:latest .
+# Déploiements backend + frontend (MongoDB Atlas + secret Jenkins / ops).
+# Remplacements d’images : scripts/jenkins-k8s-deploy.sh (tags Docker Hub CI).
+#
+# Obligatoire avant apply (sans Mongo en cluster) :
+#   kubectl create secret generic pismartsite-runtime \
+#     --from-literal=MONGODB_URI='mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/smartsite?retryWrites=true&w=majority'
+# Adapter aussi CORS_ORIGINS pour l’URL publique réelle du navigateur si besoin.
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -26,7 +30,7 @@ spec:
       containers:
         - name: backend
           image: pismartsite-backend:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 3200
               name: http
@@ -34,13 +38,16 @@ spec:
             - name: NODE_ENV
               value: production
             - name: MONGODB_URI
-              value: mongodb://mongodb:27017/smartsite
+              valueFrom:
+                secretKeyRef:
+                  name: pismartsite-runtime
+                  key: MONGODB_URI
             - name: CORS_ORIGINS
-              value: "http://127.0.0.1:3000,http://localhost:3000"
+              value: "http://127.0.0.1:3000,http://localhost:3000,http://localhost:30080"
             - name: GROQ_API_KEY
               value: ""
             - name: AI_ANALYSIS_URL
-              value: "http://smartsite-ai:8001/analyze-image"
+              value: "http://127.0.0.1:8001/analyze-image"
           volumeMounts:
             - name: uploads
               mountPath: /app/uploads
@@ -89,14 +96,13 @@ spec:
       containers:
         - name: frontend
           image: pismartsite-frontend:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 3000
               name: http
           env:
             - name: NODE_ENV
               value: production
-            # Next SSR → API cluster (distinct de NEXT_PUBLIC_* pour le navigateur, injecté au build).
             - name: INTERNAL_API_URL
               value: "http://backend:3200"
           readinessProbe:
@@ -118,61 +124,3 @@ spec:
             limits:
               cpu: "2"
               memory: 1Gi
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: smartsite-ai
-  labels:
-    app: pismartsite
-    component: ai
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: pismartsite
-      component: ai
-  template:
-    metadata:
-      labels:
-        app: pismartsite
-        component: ai
-    spec:
-      containers:
-        - name: ai
-          image: pismartsite-ai:latest
-          imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: 8001
-              name: http
-          env:
-            - name: YOLO_MODEL_PATH
-              value: /app/weights/best.pt
-          volumeMounts:
-            - name: weights
-              mountPath: /app/weights
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: http
-            initialDelaySeconds: 30
-            periodSeconds: 15
-            timeoutSeconds: 5
-            failureThreshold: 6
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: http
-            initialDelaySeconds: 60
-            periodSeconds: 30
-            timeoutSeconds: 5
-          resources:
-            requests:
-              cpu: "500m"
-              memory: 1Gi
-            limits:
-              cpu: "4"
-              memory: 4Gi
-      volumes:
-        - name: weights
-          emptyDir: {}

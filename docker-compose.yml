@@ -1,60 +1,62 @@
-# PiSmartSite — backend + frontend + service IA (YOLO) + MongoDB
-# Prérequis : Docker Desktop (Linux containers)
-# Démarrage : docker compose up -d --build
-#   • Frontend : http://localhost:3000
-#   • API      : http://localhost:3200
-#   • IA YOLO  : http://localhost:8001/health
-# Optionnel : placer un modèle dans smartsite-ai-service/weights/best.pt (ou detect.pt + YOLO_MODEL_PATH)
+# PiSmartSite — NestJS + Next.js avec MongoDB Atlas (pas de Mongo en conteneur)
+#
+# Déploiement type DevOps Jenkins : même images Docker Hub (ex. missaouimourad/pismartsite-backend:TAG)
+# avec NEXT_PUBLIC_API_URL alignée sur l’URL réelle vue par le navigateur (voir variable de job Jenkins).
+#
+# Réseau : backend et frontend sur `pismartsite-net` (external: true) :
+#   docker network create pismartsite-net
+#
+# Fichier .env à la racine (à côté de ce fichier), déjà ignoré par git :
+#   MONGODB_URI=mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/smartsite?retryWrites=true&w=majority
+#
+# PowerShell — la syntaxe linux « VAR=... » ne fonctionne pas ; soit le .env ci‑dessus, soit :
+#   $env:MONGODB_URI = 'mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/smartsite?retryWrites=true&w=majority'
+#   docker compose up -d
+#   BACKEND_IMAGE=...               (optionnel)
+#   FRONTEND_IMAGE=...              (optionnel)
+#   NEXT_PUBLIC_API_URL=http://localhost:3200
+#
+# Atlas : dans « Network Access », autoriser l’IP qui sort Internet (pour les tests depuis Docker
+# Desktop ce peut être votre IP résidentielle dynamique ou 0.0.0.0/0 uniquement en dev).
+#
+# Démarrage :
+#   docker compose up -d
+#   docker compose up -d --build
 
 name: pismartsite
 
 services:
-  mongodb:
-    image: mongo:7
-    restart: unless-stopped
-    ports:
-      - "27017:27017"
-    volumes:
-      - pismartsite_mongo_data:/data/db
-
-  smartsite-ai:
-    build:
-      context: ./smartsite-ai-service
-    restart: unless-stopped
-    ports:
-      - "8001:8001"
-    environment:
-      YOLO_MODEL_PATH: /app/weights/best.pt
-    volumes:
-      - ./smartsite-ai-service/weights:/app/weights:ro
-
   backend:
     build:
       context: ./smartsite-backend
+    image: ${BACKEND_IMAGE:-missaouimourad/pismartsite-backend:55-72bf0631}
     restart: unless-stopped
+    networks:
+      - pismartsite-net
     ports:
       - "3200:3200"
-    depends_on:
-      - mongodb
-      - smartsite-ai
     environment:
-      MONGODB_URI: mongodb://mongodb:27017/smartsite
-      AI_ANALYSIS_URL: http://smartsite-ai:8001/analyze-image
+      # Obligatoire : définie dans .env (Atlas). Compose lit automatiquement .env à cet emplacement.
+      MONGODB_URI: ${MONGODB_URI:?Définir MONGODB_URI dans un fichier .env à la racine du dépôt}
       CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
 
   frontend:
     build:
       context: ./smarsite-frontend
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:3200
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3200}
+    image: ${FRONTEND_IMAGE:-missaouimourad/pismartsite-frontend:55-72bf0631}
     restart: unless-stopped
+    networks:
+      - pismartsite-net
     ports:
       - "3000:3000"
     depends_on:
       - backend
     environment:
-      # Résolu par Docker DNS : le serveur Next ne doit pas utiliser localhost:3200 (ce serait lui-même dans le conteneur).
       INTERNAL_API_URL: http://backend:3200
 
-volumes:
-  pismartsite_mongo_data:
+networks:
+  pismartsite-net:
+    name: pismartsite-net
+    external: true

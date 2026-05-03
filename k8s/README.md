@@ -181,27 +181,37 @@ Sur le master (`kubectl`), le nom du nœud doit correspondre à `kubectl get nod
 kubectl label node worker-node-1 pismartsite-mongo=true --overwrite
 ```
 
-### 5.2 Backend : MongoDB dans le cluster + CORS
+### 5.2 Backend : Atlas (défaut CD) ou MongoDB dans le cluster + CORS
 
-Les YAML utilisent **MongoDB dans le cluster** (`mongodb://mongodb:27017/smartsite`).  
-Pour **MongoDB Atlas**, remplacer `MONGODB_URI` dans `backend-deployment.yaml` ou utiliser un **Secret** (voir commentaires dans le fichier).
+Le CD Jenkins applique **`deployment-core.yaml`** (backend + frontend) ; **`MONGODB_URI`** provient du Secret **`pismartsite-runtime`** (clé **`MONGODB_URI`**) pour Atlas.
 
-Adapter **`CORS_ORIGINS`** dans `backend-deployment.yaml` avec l’URL réelle du frontend pour le navigateur, ex. :
+Pour **MongoDB dans le cluster** (`mongodb://mongodb:27017/smartsite`), appliquer **`db-*.yaml`** et utiliser **`DEPLOY_CLUSTER_MONGO=true`** avec le script `scripts/jenkins-k8s-deploy.sh` (voir en-tête **`Jenkinsfile`**).
+
+Adapter **`CORS_ORIGINS`** dans **`deployment-core.yaml`** avec l’URL réelle du frontend pour le navigateur, ex. :
 
 `http://192.168.56.11:30080`
 
 ### 5.3 Appliquer les manifests (ordre recommandé)
 
-Depuis la racine du dépôt (où se trouve le dossier `k8s/`) :
+Depuis la racine du dépôt (où se trouve le dossier `k8s/`). **Secrets Atlas** avant `deployment-core` :
+
+```bash
+kubectl create secret generic pismartsite-runtime \
+  --from-literal=MONGODB_URI='mongodb+srv://...'
+kubectl apply -f k8s/deployment-core.yaml
+kubectl apply -f k8s/service.yaml
+kubectl apply -f k8s/deployment-ai.yaml
+```
+
+Stack **Mongo Pods** :
 
 ```bash
 kubectl apply -f k8s/db-pv.yaml
 kubectl apply -f k8s/db-pvc.yaml
 kubectl apply -f k8s/db-deployment.yaml
-kubectl apply -f k8s/backend-service.yaml
-kubectl apply -f k8s/backend-deployment.yaml
-kubectl apply -f k8s/frontend-service.yaml
-kubectl apply -f k8s/frontend-deployment.yaml
+kubectl apply -f k8s/deployment-core.yaml
+kubectl apply -f k8s/service.yaml
+kubectl apply -f k8s/deployment-ai.yaml
 ```
 
 Vérifier :
@@ -231,10 +241,11 @@ Le dépôt contient `smartsite-ai-service` (Python). Pour l’intégrer au clust
 | `db-pv.yaml` | Volume persistant local MongoDB |
 | `db-pvc.yaml` | Réclamation PVC |
 | `db-deployment.yaml` | Déploiement MongoDB + Service ClusterIP |
-| `backend-deployment.yaml` | NestJS (port 3200) |
-| `backend-service.yaml` | ClusterIP + NodePort **30320** |
-| `frontend-deployment.yaml` | Next.js (port 3000) |
-| `frontend-service.yaml` | NodePort **30080** |
+| `deployment-core.yaml` | Backend NestJS + Frontend Next.js (Secrets Atlas) |
+| `deployment-ai.yaml` | Serveur IA optionnel |
+| `service.yaml` | ClusterIP backend + NodePorts **30080** / **30320** + svc IA |
+
+_Les anciens fichiers `backend-deployment.yaml` / `frontend-deployment.yaml` listés sont remplacés par `deployment-core.yaml` dans ce flux._
 
 ---
 

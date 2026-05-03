@@ -4,13 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { mutate } from "swr";
 import type { Human } from "@/lib/types"; // Assure-toi de créer un type Human
-import { deleteHuman, getHumansKey } from "@/lib/api";
+import { deleteHuman, getHumansKey, getApiBaseUrl } from "@/lib/api";
 import { Pencil, Trash2, Eye, Users, FileText, ExternalLink } from "lucide-react";
 
-const API_BASE =
-  typeof process.env.NEXT_PUBLIC_API_URL === "string"
-    ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, "")
-    : "http://localhost:3200";
+const API_BASE = getApiBaseUrl();
 
 function cvHref(cvUrl: string) {
   if (!cvUrl) return "";

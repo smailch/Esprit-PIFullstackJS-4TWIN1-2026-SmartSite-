@@ -31,6 +31,22 @@
  *   « Declarative: Checkout SCM » puis workspace déjà incomplet avant cleanWs).
  * Pas de bloc parameters : pas de SKIP_CD. Si Jenkins propose encore SKIP_CD, désactive
  *   « Ce projet est paramétrable » dans Configuration du job ou pousse ce Jenkinsfile puis rebuild.
+ *
+ * ─── DevOps PiSmartSite (Docker Hub missaouimourad/pismartsite-*) ───
+ * Images poussées : DOCKER_IMAGE_OWNER/pismartsite-backend puis TAG = numéro de build Jenkins + court hash git.
+ * Exemple de TAG figé hors CI : 55-72bf0631 (voir dernier succès du job).
+ *
+ * Variables de job recommandées :
+ *   NEXT_PUBLIC_API_URL_BUILD — URL API vue par le navigateur en prod/préprod (pas 127.0.0.1).
+ *                              Ex. http://NODE_IP:30320 si NodePort, ou votre domaine Ingress.
+ *   DOCKER_IMAGE_OWNER        — défaut missaouimourad ; images = owner/pismartsite-backend|frontend:TAG
+ *
+ * Kubernetes (après Docker push), scénario MongoDB Atlas (défaut) :
+ *   • Créer une fois sur le cluster : secret pismartsite-runtime avec la clé MONGODB_URI (Atlas).
+ *   • DEPLOY_CLUSTER_MONGO=false, DEPLOY_AI_SERVICE=false — définissez à true uniquement pour stack complète ancienne.
+ *   • SKIP_KUBERNETES_DEPLOY=true pour ne faire que Docker Hub sans kubectl.
+ * Ports exposés dans k8s/service.yaml : frontend NodePort typique 30080 → navigateur ;
+ *                                       backend-nodeport 30320 → équivalent Docker 3200:3200 depuis l’extérieur.
  */
 pipeline {
   agent any
@@ -67,6 +83,11 @@ pipeline {
      */
     /** Surcharge explicite si besoin : /usr/local/bin/docker */
     DOCKER_BIN = "${env.DOCKER_BIN ?: 'docker'}"
+    /** K8s : Mongo en Pods (false par défaut = Atlas comme docker-compose DevOps récent) */
+    DEPLOY_CLUSTER_MONGO = "${env.DEPLOY_CLUSTER_MONGO ?: 'false'}"
+    DEPLOY_AI_SERVICE = "${env.DEPLOY_AI_SERVICE ?: 'false'}"
+    SKIP_KUBE_ATLAS_SECRET_CHECK = "${env.SKIP_KUBE_ATLAS_SECRET_CHECK ?: 'false'}"
+    SKIP_KUBERNETES_DEPLOY = "${env.SKIP_KUBERNETES_DEPLOY ?: 'false'}"
   }
 
   stages {
@@ -380,6 +401,11 @@ Exemple DOCKER_IMAGE_OWNER=jdoe → jdoe/pismartsite-backend:…'''
     }
 
     stage('CD — Kubernetes apply') {
+      when {
+        expression {
+          !((env.SKIP_KUBERNETES_DEPLOY ?: '').trim().equalsIgnoreCase('true'))
+        }
+      }
       options {
         timeout(time: 30, unit: 'MINUTES')
       }
@@ -390,6 +416,9 @@ Exemple DOCKER_IMAGE_OWNER=jdoe → jdoe/pismartsite-backend:…'''
           sh '''
             set -e
             export KUBECONFIG="$KUBECONFIG_FILE"
+            export DEPLOY_CLUSTER_MONGO="$DEPLOY_CLUSTER_MONGO"
+            export DEPLOY_AI_SERVICE="$DEPLOY_AI_SERVICE"
+            export SKIP_KUBE_ATLAS_SECRET_CHECK="$SKIP_KUBE_ATLAS_SECRET_CHECK"
             chmod +x scripts/jenkins-k8s-deploy.sh
             IMG_BACKEND="$IMG_BACKEND" IMG_FRONTEND="$IMG_FRONTEND" IMG_AI="$IMG_AI" \
               scripts/jenkins-k8s-deploy.sh
@@ -411,7 +440,13 @@ Exemple DOCKER_IMAGE_OWNER=jdoe → jdoe/pismartsite-backend:…'''
       }
     }
     success {
-      echo '[Pipeline] Succès : CI + Sonar + CD (Docker Hub + Kubernetes).'
+      script {
+        if ((env.SKIP_KUBERNETES_DEPLOY ?: '').trim().equalsIgnoreCase('true')) {
+          echo '[Pipeline] Succès : CI + Sonar + CD Docker Hub uniquement (K8s ignoré — SKIP_KUBERNETES_DEPLOY).'
+        } else {
+          echo '[Pipeline] Succès : CI + Sonar + CD (Docker Hub + Kubernetes).'
+        }
+      }
     }
     failure {
       echo '[Pipeline] FAILURE — examiner le dernier stage en erreur.'

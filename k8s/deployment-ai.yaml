@@ -1,0 +1,59 @@
+# Service IA optionnel — déployé seulement si DEPLOY_AI_SERVICE=true (jenkins-k8s-deploy.sh).
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smartsite-ai
+  labels:
+    app: pismartsite
+    component: ai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pismartsite
+      component: ai
+  template:
+    metadata:
+      labels:
+        app: pismartsite
+        component: ai
+    spec:
+      containers:
+        - name: ai
+          image: pismartsite-ai:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8001
+              name: http
+          env:
+            - name: YOLO_MODEL_PATH
+              value: /app/weights/best.pt
+          volumeMounts:
+            - name: weights
+              mountPath: /app/weights
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: "500m"
+              memory: 1Gi
+            limits:
+              cpu: "4"
+              memory: 4Gi
+      volumes:
+        - name: weights
+          emptyDir: {}

@@ -19,14 +19,11 @@ import {
   ExternalLink,
 } from "lucide-react";
 import type { Human } from "@/lib/types";
-import { fetcher, getHumanKey } from "@/lib/api";
+import { fetcher, getHumanKey, getApiBaseUrl } from "@/lib/api";
 import MainLayout from "@/components/MainLayout";
 import PageHeader from "@/components/PageHeader";
 
-const API_BASE =
-  typeof process.env.NEXT_PUBLIC_API_URL === "string"
-    ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, "")
-    : "http://localhost:3200";
+const API_BASE = getApiBaseUrl();
 
 function resolveAssetUrl(path: string) {
   if (!path) return "";
