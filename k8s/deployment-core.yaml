@@ -4,7 +4,9 @@
 # Obligatoire avant apply (sans Mongo en cluster) :
 #   kubectl create secret generic pismartsite-runtime \
 #     --from-literal=MONGODB_URI='mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/smartsite?retryWrites=true&w=majority'
-# Adapter aussi CORS_ORIGINS pour l’URL publique réelle du navigateur si besoin.
+# Adapter CORS_ORIGINS pour l’URL publique du front (Ingress / NodePort 30080 / domaine).
+# NEXT_PUBLIC_API_URL est figé au docker build (Jenkins : NEXT_PUBLIC_API_URL_BUILD) ;
+#   doit être l’URL API joignable depuis le navigateur, ex. http://NODE_IP:30320 ou https://api.example.com
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -43,7 +45,7 @@ spec:
                   name: pismartsite-runtime
                   key: MONGODB_URI
             - name: CORS_ORIGINS
-              value: "http://127.0.0.1:3000,http://localhost:3000,http://localhost:30080"
+              value: "http://127.0.0.1:3000,http://localhost:3000,http://localhost:30080,http://127.0.0.1:30080"
             - name: GROQ_API_KEY
               value: ""
             - name: AI_ANALYSIS_URL
@@ -103,7 +105,10 @@ spec:
           env:
             - name: NODE_ENV
               value: production
+            # SSR / rewrites Next : même logique que docker-compose (service K8s `backend`).
             - name: INTERNAL_API_URL
+              value: "http://backend:3200"
+            - name: BACKEND_PROXY_TARGET
               value: "http://backend:3200"
           readinessProbe:
             httpGet:

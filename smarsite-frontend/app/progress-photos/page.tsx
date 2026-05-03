@@ -20,10 +20,11 @@ import {
   ZoomIn,
 } from 'lucide-react';
 import {
+  backendUploadImageProps,
   fetcher,
   getApiBaseUrl,
-  getApiRootAbsoluteUrl,
   getAuthHeaderInit,
+  resolveBackendMediaUrl,
   getProjectsKey,
   getTasksByProjectKey,
   getJobsKey,
@@ -36,11 +37,7 @@ import { resolveProgressPhotoUrl } from '@/lib/jobProgressApi';
 import { jobStatusLabelEn } from '@/lib/projectStatusLabel';
 
 function galleryPhotoSrc(photoUrl: string): string {
-  if (!photoUrl) return '';
-  if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) return photoUrl;
-  const base = getApiRootAbsoluteUrl();
-  if (!base) return photoUrl;
-  return `${base}${photoUrl.startsWith('/') ? '' : '/'}${photoUrl}`;
+  return resolveBackendMediaUrl(photoUrl);
 }
 
 interface ProgressPhoto {
@@ -254,10 +251,10 @@ export default function ProgressPhotosPage() {
         }
       }
 
+      await fetchPhotos();
       alert('Photo uploaded successfully!' + (uploadMode === 'local' ? ' AI is estimating progress...' : ''));
       setShowUploadModal(false);
       setUploadMode('local');
-      fetchPhotos();
     } catch (err: any) {
       console.error('Error uploading photo:', err);
       alert('Error: ' + err.message);
@@ -481,6 +478,7 @@ export default function ProgressPhotosPage() {
                           >
                             <div className="relative aspect-[4/3] w-full">
                               <Image
+                                {...backendUploadImageProps}
                                 src={img}
                                 alt=""
                                 fill
@@ -547,6 +545,7 @@ export default function ProgressPhotosPage() {
               >
                 <div className="relative aspect-[4/3] overflow-hidden bg-slate-950">
                   <Image
+                    {...backendUploadImageProps}
                     src={fullSrc}
                     alt={photo.caption || 'Progress photo'}
                     fill
@@ -823,6 +822,7 @@ export default function ProgressPhotosPage() {
           >
             <div className="relative mx-auto h-[min(78vh,860px)] w-full max-w-full">
               <Image
+                {...backendUploadImageProps}
                 src={lightbox.src}
                 alt=""
                 fill

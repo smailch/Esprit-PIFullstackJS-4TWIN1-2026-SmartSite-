@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getApiBaseUrl, getApiRootAbsoluteUrl } from "./api";
+import { getApiBaseUrl, resolveBackendMediaUrl } from "./api";
 import { formatAxiosError } from "./formatAxiosError";
 
 const client = axios.create({
@@ -156,24 +156,9 @@ export async function deleteProgressPhoto(
   }
 }
 
-/** Build URL for <img> — normalise les URLs absolues du backend (port 3200) vers le proxy / même origine. */
+/** Pour `<Image src>` / `<img>` — aligne `/uploads/...` sur l’API vue par le navigateur. */
 export function resolveProgressPhotoUrl(photoUrl: string | undefined): string | undefined {
   if (!photoUrl) return undefined;
-  if (photoUrl.startsWith("http://") || photoUrl.startsWith("https://")) {
-    const idx = photoUrl.indexOf("/uploads/");
-    if (idx >= 0) {
-      const path = photoUrl.slice(idx);
-      const root = getApiRootAbsoluteUrl();
-      if (root) return `${root.replace(/\/$/, "")}${path}`;
-    }
-    return photoUrl;
-  }
-  const base = getApiBaseUrl();
-  if (base.startsWith("http")) {
-    return `${base.replace(/\/$/, "")}${photoUrl.startsWith("/") ? "" : "/"}${photoUrl}`;
-  }
-  if (typeof window !== "undefined") {
-    return `${window.location.origin.replace(/\/$/, "")}${base.replace(/\/$/, "")}${photoUrl.startsWith("/") ? "" : "/"}${photoUrl}`;
-  }
-  return `${base}${photoUrl.startsWith("/") ? "" : "/"}${photoUrl}`;
+  const resolved = resolveBackendMediaUrl(photoUrl);
+  return resolved || undefined;
 }

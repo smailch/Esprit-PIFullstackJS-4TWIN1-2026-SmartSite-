@@ -35,6 +35,7 @@
  * ─── DevOps PiSmartSite (Docker Hub missaouimourad/pismartsite-*) ───
  * Images poussées : DOCKER_IMAGE_OWNER/pismartsite-backend puis TAG = numéro de build Jenkins + court hash git.
  * Exemple de TAG figé hors CI : 55-72bf0631 (voir dernier succès du job).
+ * Guide conteneurs (Compose après push, K8s, NEXT_PUBLIC, CORS) : docs/JENKINS-DOCKER-CONTAINERS.md
  *
  * Variables de job recommandées :
  *   NEXT_PUBLIC_API_URL_BUILD — URL API vue par le navigateur en prod/préprod (pas 127.0.0.1).

@@ -19,15 +19,7 @@ import {
   Save,
   X
 } from 'lucide-react';
-import { getApiBaseUrl, getApiRootAbsoluteUrl, getAuthHeaderInit } from '@/lib/api';
-
-function photoDisplaySrc(photoUrl: string): string {
-  if (!photoUrl) return '';
-  if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) return photoUrl;
-  const b = getApiRootAbsoluteUrl();
-  if (!b) return photoUrl;
-  return `${b}${photoUrl.startsWith('/') ? '' : '/'}${photoUrl}`;
-}
+import { backendUploadImageProps, getApiBaseUrl, getAuthHeaderInit, resolveBackendMediaUrl } from '@/lib/api';
 
 interface ProgressPhoto {
   _id: string;
@@ -270,7 +262,8 @@ export default function ProgressPhotoDetailPage() {
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-lg shadow-black/20">
           <div className="relative min-h-[240px] w-full bg-muted/50">
             <Image
-              src={photoDisplaySrc(photo.photoUrl)}
+              {...backendUploadImageProps}
+              src={resolveBackendMediaUrl(photo.photoUrl)}
               alt={photo.caption || 'Progress photo'}
               width={1200}
               height={800}
@@ -289,7 +282,7 @@ export default function ProgressPhotoDetailPage() {
 
           <div className="border-t border-border p-6">
             <a
-              href={photoDisplaySrc(photo.photoUrl)}
+              href={resolveBackendMediaUrl(photo.photoUrl)}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:brightness-110"

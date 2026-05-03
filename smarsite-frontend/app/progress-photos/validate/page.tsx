@@ -4,17 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import MainLayout from '@/components/MainLayout';
 import PageHeader from '@/components/PageHeader';
-import { getApiBaseUrl, getApiRootAbsoluteUrl, getAuthHeaderInit } from '@/lib/api';
+import { backendUploadImageProps, getApiBaseUrl, resolveBackendMediaUrl, getAuthHeaderInit } from '@/lib/api';
 import { CheckCircle, XCircle, Clock, Image as ImageIcon, AlertCircle } from 'lucide-react';
-
-function getPhotoUrl(photoUrl: string) {
-  if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
-    return photoUrl;
-  }
-  const b = getApiRootAbsoluteUrl();
-  if (!b) return photoUrl;
-  return `${b}${photoUrl.startsWith('/') ? '' : '/'}${photoUrl}`;
-}
 
 interface ProgressPhoto {
   _id: string;
@@ -157,7 +148,8 @@ export default function ValidatePhotosPage() {
                   {/* Photo */}
                   <div className="relative aspect-video bg-secondary cursor-pointer" onClick={() => setSelectedPhoto(photo)}>
                     <Image
-                      src={getPhotoUrl(photo.photoUrl)}
+                      {...backendUploadImageProps}
+                      src={resolveBackendMediaUrl(photo.photoUrl)}
                       alt={photo.caption || 'Progress photo'}
                       fill
                       className="object-cover"
@@ -250,7 +242,8 @@ export default function ValidatePhotosPage() {
             <div className="p-6">
               <div className="relative mb-4 aspect-video w-full overflow-hidden rounded-lg bg-muted">
                 <Image
-                  src={getPhotoUrl(selectedPhoto.photoUrl)}
+                  {...backendUploadImageProps}
+                  src={resolveBackendMediaUrl(selectedPhoto.photoUrl)}
                   alt={selectedPhoto.caption || 'Progress photo'}
                   fill
                   className="object-contain"

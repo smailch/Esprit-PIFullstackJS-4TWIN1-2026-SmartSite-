@@ -2,6 +2,8 @@
 
 Monorepo : **NestJS** dans `smartsite-backend/`, **Next.js** dans `smarsite-frontend/` (équivalent des dossiers « backend / frontend » mentionnés dans le cahier des charges).
 
+**Docker / variables d’environnement / CORS / déploiement des images Hub :** voir **[`docs/JENKINS-DOCKER-CONTAINERS.md`](./JENKINS-DOCKER-CONTAINERS.md)**.
+
 | Pipeline        | Fichier (Script Path dans Jenkins)     | Rôle |
 |----------------|-----------------------------------------|------|
 | CI Backend     | `smartsite-backend/Jenkinsfile`        | `npm ci` → tests + couverture → `npm run build` |

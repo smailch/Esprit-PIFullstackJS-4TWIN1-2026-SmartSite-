@@ -19,7 +19,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import type { Human } from "@/lib/types";
-import { fetcher, getHumanKey, getApiBaseUrl } from "@/lib/api";
+import { fetcher, getHumanKey, getApiBaseUrl, backendUploadImageProps, resolveBackendMediaUrl } from "@/lib/api";
 import MainLayout from "@/components/MainLayout";
 import PageHeader from "@/components/PageHeader";
 
@@ -113,7 +113,8 @@ export default function HumanDetailsPage({
                   <div className="relative flex h-40 w-40 items-center justify-center overflow-hidden rounded-3xl border-8 border-card bg-primary text-6xl font-bold text-primary-foreground shadow-sm ring-2 ring-border transition-all duration-300 group-hover:scale-[1.02] group-hover:ring-ring/50 lg:h-48 lg:w-48 lg:text-7xl">
                     {human.imageUrl ? (
                       <Image
-                        src={resolveAssetUrl(human.imageUrl)}
+                        {...backendUploadImageProps}
+                        src={human.imageUrl ? resolveBackendMediaUrl(human.imageUrl) : ""}
                         alt={`${human.firstName} ${human.lastName}`}
                         fill
                         className="object-cover rounded-3xl"

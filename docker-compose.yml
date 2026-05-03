@@ -6,18 +6,11 @@
 # Réseau : backend et frontend sur `pismartsite-net` (external: true) :
 #   docker network create pismartsite-net
 #
-# Fichier .env à la racine (à côté de ce fichier), déjà ignoré par git :
-#   MONGODB_URI=mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/smartsite?retryWrites=true&w=majority
+# Backend : Nest — variables dans smartsite-backend/.env (voir env_file ci‑dessous).
+# Frontend : OpenRouter etc. dans smarsite-frontend/.env.local (routes API Next).
 #
-# PowerShell — la syntaxe linux « VAR=... » ne fonctionne pas ; soit le .env ci‑dessus, soit :
-#   $env:MONGODB_URI = 'mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/smartsite?retryWrites=true&w=majority'
-#   docker compose up -d
-#   BACKEND_IMAGE=...               (optionnel)
-#   FRONTEND_IMAGE=...              (optionnel)
-#   NEXT_PUBLIC_API_URL=http://localhost:3200
-#
-# Atlas : dans « Network Access », autoriser l’IP qui sort Internet (pour les tests depuis Docker
-# Desktop ce peut être votre IP résidentielle dynamique ou 0.0.0.0/0 uniquement en dev).
+# Copie locale des images Hub dans le projet :
+#   .\scripts\save-pismartsite-images.ps1  → docker-images/pismartsite-stack.tar
 #
 # Démarrage :
 #   docker compose up -d
@@ -31,13 +24,16 @@ services:
       context: ./smartsite-backend
     image: ${BACKEND_IMAGE:-missaouimourad/pismartsite-backend:55-72bf0631}
     restart: unless-stopped
+    env_file:
+      - ./smartsite-backend/.env
     networks:
       - pismartsite-net
     ports:
       - "3200:3200"
+    volumes:
+      # Fichiers uploadés (photos chantier, progress, humains…) : visibles dans le dépôt et persistants.
+      - ./smartsite-backend/uploads:/app/uploads
     environment:
-      # Obligatoire : définie dans .env (Atlas). Compose lit automatiquement .env à cet emplacement.
-      MONGODB_URI: ${MONGODB_URI:?Définir MONGODB_URI dans un fichier .env à la racine du dépôt}
       CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
 
   frontend:
@@ -47,6 +43,8 @@ services:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3200}
     image: ${FRONTEND_IMAGE:-missaouimourad/pismartsite-frontend:55-72bf0631}
     restart: unless-stopped
+    env_file:
+      - ./smarsite-frontend/.env.local
     networks:
       - pismartsite-net
     ports:
@@ -54,6 +52,8 @@ services:
     depends_on:
       - backend
     environment:
+      # Next `next start` relit env : rewrites `/api-backend` → cette cible (évite 127.0.0.1 dans le conteneur).
+      BACKEND_PROXY_TARGET: http://backend:3200
       INTERNAL_API_URL: http://backend:3200
 
 networks:

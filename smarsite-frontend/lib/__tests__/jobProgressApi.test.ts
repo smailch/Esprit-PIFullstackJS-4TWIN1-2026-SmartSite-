@@ -22,6 +22,20 @@ vi.mock("axios", () => ({
 vi.mock("../api", () => ({
   getApiBaseUrl: () => "http://localhost:3200/",
   getApiRootAbsoluteUrl: () => "http://localhost:3200",
+  resolveBackendMediaUrl: (raw: string | undefined | null) => {
+    if (raw == null) return "";
+    const trimmed = String(raw).trim();
+    if (!trimmed) return "";
+    const uploadsIdx = trimmed.toLowerCase().indexOf("/uploads/");
+    if (/^https?:\/\//i.test(trimmed) && uploadsIdx < 0) return trimmed;
+    const path =
+      uploadsIdx >= 0
+        ? trimmed.slice(uploadsIdx)
+        : trimmed.startsWith("/")
+          ? trimmed
+          : `/${trimmed}`;
+    return `http://localhost:3200${path}`;
+  },
 }));
 
 import {

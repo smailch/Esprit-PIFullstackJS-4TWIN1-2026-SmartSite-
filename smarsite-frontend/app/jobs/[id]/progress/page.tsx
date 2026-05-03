@@ -34,6 +34,7 @@ import {
   resolveProgressPhotoUrl,
   type JobProgressStepPayload,
 } from "@/lib/jobProgressApi";
+import { backendUploadImageProps } from "@/lib/api";
 
 ChartJS.register(
   Title,
@@ -303,6 +304,7 @@ export default function JobProgressPage() {
         };
         setStepsLocal(toStepsPayload(next));
         await persistSteps(toStepsPayload(next));
+        await reload();
         toast.success("Photo saved", {
           description: res.aiAnalysis?.message,
         });
@@ -313,7 +315,7 @@ export default function JobProgressPage() {
         setUploadSendPercent(null);
       }
     },
-    [id, safeSteps, setStepsLocal, persistSteps]
+    [id, safeSteps, setStepsLocal, persistSteps, reload]
   );
 
   const handlePhotoInput = useCallback(
@@ -594,6 +596,8 @@ export default function JobProgressPage() {
                         {step.photoUrl ? (
                           <div className="relative mx-auto h-48 w-full max-w-xs">
                             <Image
+                              key={resolveProgressPhotoUrl(step.photoUrl) ?? "photo"}
+                              {...backendUploadImageProps}
                               src={resolveProgressPhotoUrl(step.photoUrl)}
                               alt="Step evidence"
                               fill

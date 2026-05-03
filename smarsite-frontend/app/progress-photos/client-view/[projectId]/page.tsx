@@ -5,16 +5,8 @@ import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import MainLayout from '@/components/MainLayout';
 import PageHeader from '@/components/PageHeader';
-import { getApiBaseUrl, getApiRootAbsoluteUrl, getAuthHeaderInit } from '@/lib/api';
+import { backendUploadImageProps, getApiBaseUrl, resolveBackendMediaUrl, getAuthHeaderInit } from '@/lib/api';
 import { CheckCircle, Image as ImageIcon, Calendar, TrendingUp, ArrowLeft } from 'lucide-react';
-
-function photoDisplaySrc(photoUrl: string): string {
-  if (!photoUrl) return '';
-  if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) return photoUrl;
-  const b = getApiRootAbsoluteUrl();
-  if (!b) return photoUrl;
-  return `${b}${photoUrl.startsWith('/') ? '' : '/'}${photoUrl}`;
-}
 
 interface ProgressPhoto {
   _id: string;
@@ -158,7 +150,8 @@ export default function ClientViewPage() {
                   onClick={() => setSelectedPhoto(photo)}
                 >
                   <Image
-                    src={photoDisplaySrc(photo.photoUrl)}
+                    {...backendUploadImageProps}
+                    src={resolveBackendMediaUrl(photo.photoUrl)}
                     alt={photo.caption || 'Progress photo'}
                     fill
                     className="object-cover transition-opacity hover:opacity-90"
@@ -254,7 +247,8 @@ export default function ClientViewPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <Image
-                src={photoDisplaySrc(selectedPhoto.photoUrl)}
+                {...backendUploadImageProps}
+                src={resolveBackendMediaUrl(selectedPhoto.photoUrl)}
                 alt={selectedPhoto.caption || 'Progress photo'}
                 fill
                 className="object-contain"

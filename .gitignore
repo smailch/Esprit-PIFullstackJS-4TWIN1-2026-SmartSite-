@@ -32,6 +32,7 @@ smarsite-frontend/IAdetectionsaftyrisque/weights/
 
 # ==================== Uploads & Gros fichiers médias ====================
 smartsite-backend/uploads/
+docker-images/*.tar
 *.jpg
 *.jpeg
 *.png

@@ -9,7 +9,7 @@ import PageHeader from "@/components/PageHeader";
 import { useJobProgress } from "@/hooks/useJobProgress";
 import { resolveProgressPhotoUrl } from "@/lib/jobProgressApi";
 import type { BackendTask, Job, Project } from "@/lib/types";
-import { fetcher, getJobsKey, getProjectsKey, getTasksByProjectKey } from "@/lib/api";
+import { backendUploadImageProps, fetcher, getJobsKey, getProjectsKey, getTasksByProjectKey } from "@/lib/api";
 import {
   ArrowLeft,
   Briefcase,
@@ -211,7 +211,7 @@ export default function ProjectJobProgressPage({
                         ) : null}
                         {img ? (
                           <div className="relative mt-3 h-48 w-full overflow-hidden rounded-lg border border-white/10">
-                            <Image src={img} alt="" fill className="object-cover" sizes="(max-width: 768px) 100vw, 640px" />
+                            <Image {...backendUploadImageProps} src={img} alt="" fill className="object-cover" sizes="(max-width: 768px) 100vw, 640px" />
                           </div>
                         ) : null}
                       </div>

@@ -60,6 +60,51 @@ export function getApiRootAbsoluteUrl(): string {
   return `${window.location.origin.replace(/\/$/, "")}${b}`.replace(/\/$/, "");
 }
 
+/**
+ * À passer à `next/image` pour les médias servis par Nest (`/uploads/...`).
+ * Sous Docker, l’optimiseur Next récupère l’URL depuis le conteneur frontend : `localhost:3200`
+ * ne pointe pas vers le backend → images cassées sans `unoptimized`.
+ */
+export const backendUploadImageProps = { unoptimized: true as const };
+
+/**
+ * URL absolue chargeable dans le navigateur pour un fichier sous `/uploads/` (Nest sert `./uploads` en `/uploads/*`).
+ * - Si la valeur stockée est une URL complète (« http://vieux-host:3200/uploads/… » ou conteneur), on ne garde
+ *   que le chemin à partir de `/uploads/` et on le préfixe avec `NEXT_PUBLIC_API_URL` ou `origin + /api-backend`.
+ * - URLs externes hors `/uploads/` : renvoyées telles quelles.
+ */
+export function resolveBackendMediaUrl(
+  raw: string | undefined | null,
+): string {
+  if (raw === undefined || raw === null) return "";
+  const trimmed = String(raw).trim();
+  if (!trimmed) return "";
+
+  const lower = trimmed.toLowerCase();
+  const uploadsIdx = lower.indexOf("/uploads/");
+
+  if (/^https?:\/\//i.test(trimmed) && uploadsIdx < 0) {
+    return trimmed;
+  }
+
+  const path =
+    uploadsIdx >= 0
+      ? trimmed.slice(uploadsIdx)
+      : trimmed.startsWith("/")
+        ? trimmed
+        : `/${trimmed}`;
+
+  const base = getApiBaseUrl().replace(/\/$/, "");
+  if (base.startsWith("http")) {
+    return `${base}${path}`;
+  }
+  if (typeof window !== "undefined") {
+    const origin = window.location.origin.replace(/\/$/, "");
+    return `${origin}${base}${path}`;
+  }
+  return path;
+}
+
 /** Lien de téléchargement / ouverture pour un `fileUrl` relatif (`/uploads/...`) derrière le proxy. */
 export function buildUploadsFileHref(fileUrl: string): string {
   if (!fileUrl) return "#";
