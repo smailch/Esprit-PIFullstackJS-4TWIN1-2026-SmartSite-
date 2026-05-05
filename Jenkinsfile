@@ -52,13 +52,13 @@
 pipeline {
   agent any
 
-  options {
-    timestamps()
-    buildDiscarder(logRotator(numToKeepStr: '20'))
-    timeout(time: 4, unit: 'HOURS')
-    Un seul checkout explicite au stage Checkout (après cleanWs), pas avant. */
-    skipDefaultCheckout(true)
-  }
+ options {
+  timestamps()
+  buildDiscarder(logRotator(numToKeepStr: '20'))
+  timeout(time: 4, unit: 'HOURS')
+
+  skipDefaultCheckout(true)
+}
 
   environment {
     CI = 'true'
