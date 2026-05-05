@@ -56,7 +56,7 @@ pipeline {
     timestamps()
     buildDiscarder(logRotator(numToKeepStr: '20'))
     timeout(time: 4, unit: 'HOURS')
-    /** Un seul checkout explicite au stage Checkout (après cleanWs), pas avant. */
+    Un seul checkout explicite au stage Checkout (après cleanWs), pas avant. */
     skipDefaultCheckout(true)
   }
 
@@ -401,7 +401,7 @@ Exemple DOCKER_IMAGE_OWNER=jdoe → jdoe/pismartsite-backend:…'''
       }
     }
 
-    stage('CD — Kubernetes apply') {
+    /** stage('CD — Kubernetes apply') {
       when {
         expression {
           !((env.SKIP_KUBERNETES_DEPLOY ?: '').trim().equalsIgnoreCase('true'))
@@ -426,7 +426,7 @@ Exemple DOCKER_IMAGE_OWNER=jdoe → jdoe/pismartsite-backend:…'''
           '''
         }
       }
-    }
+    } */
   }
 
   post {
